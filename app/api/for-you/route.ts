@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     const { items, clusters } = await fetchItems(supabase, user.id, {
       category: 'for_you',
       limit,
-      includeLow: false,
+      includeLow: true,
       isDismissed: false
     })
     return NextResponse.json({ items, clusters })

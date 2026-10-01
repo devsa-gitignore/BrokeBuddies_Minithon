@@ -3,19 +3,13 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Target, Zap, Settings, LogOut } from 'lucide-react'
+import { Target, Zap, Settings, LogOut, LayoutGrid } from 'lucide-react'
 
 const LINKS = [
-<<<<<<< HEAD
-  { href: '/dashboard', label: 'Attention', icon: '🎯' },
-  { href: '/highlights', label: 'Highlights', icon: '✦' },
-  { href: '/workspaces', label: 'Workspaces', icon: '❖' },
-  { href: '/settings', label: 'Settings', icon: '⚙' },
-=======
   { href: '/dashboard', label: 'ATTENTION', icon: Target },
   { href: '/highlights', label: 'HIGHLIGHTS', icon: Zap },
+  { href: '/workspaces', label: 'WORKSPACES', icon: LayoutGrid },
   { href: '/settings', label: 'SETTINGS', icon: Settings },
->>>>>>> 27cd660966812e7f5502a786f773a5206759487c
 ]
 
 export function AppNav() {
