@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
+import { Zap, RefreshCcw, ExternalLink, ShieldAlert, GitMerge } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 /* ─── Types ──────────────────────────────────────────────────── */
 type HighlightItem = {
@@ -39,20 +41,20 @@ function timeAgo(ts: string | null) {
   if (!ts) return ''
   const diff = Date.now() - new Date(ts).getTime()
   const h = Math.floor(diff / 3600000)
-  if (h < 1) return `${Math.max(1, Math.floor(diff / 60000))}m ago`
-  if (h < 24) return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
+  if (h < 1) return `${Math.max(1, Math.floor(diff / 60000))}M AGO`
+  if (h < 24) return `${h}H AGO`
+  return `${Math.floor(h / 24)}D AGO`
 }
 
 /* ─── Source badge ─────────────────────────────────────────────── */
 function SourceBadge({ source, isMock }: { source: string; isMock: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-      isMock ? 'border border-white/10 text-white/30' : 'border border-violet-500/30 bg-violet-500/10 text-violet-300'
+    <span className={`inline-flex items-center gap-1 font-pixel text-xs px-2 py-1 uppercase ${
+      isMock ? 'bg-white/10 text-white/50 border border-white/20' : 'bg-neo-lavender text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]'
     }`}>
-      {isMock && <span className="text-white/20">~</span>}
+      {isMock && <span>~</span>}
       {source}
-      {isMock && <span className="text-white/20">mock</span>}
+      {isMock && <span>[MOCK]</span>}
     </span>
   )
 }
@@ -61,29 +63,33 @@ function SourceBadge({ source, isMock }: { source: string; isMock: boolean }) {
 function HighlightCard({ item }: { item: HighlightItem }) {
   const isMock = item.source_type.endsWith('_mock')
   return (
-    <article className="rounded-xl border border-white/10 bg-white/5 p-5 space-y-3 hover:border-white/20 transition-colors">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <SourceBadge source={item.source} isMock={isMock} />
-            <span className="text-xs text-white/30">{timeAgo(item.timestamp)}</span>
-          </div>
-          {item.title && <h3 className="text-sm font-medium text-white leading-snug">{item.title}</h3>}
-          {item.text && !item.title && <p className="text-sm text-white/70 line-clamp-3">{item.text}</p>}
+    <motion.article 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="break-inside-avoid mb-6 rounded-none border-4 border-white/20 bg-neo-black p-5 hover:border-neo-lavender transition-colors shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] hover:shadow-neo-lavender"
+    >
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b-4 border-white/10 pb-3">
+          <SourceBadge source={item.source} isMock={isMock} />
+          <span className="font-pixel text-xs text-white/40">{timeAgo(item.timestamp)}</span>
+        </div>
+        <div className="space-y-2">
+          {item.title && <h3 className="font-sans text-xl font-bold text-white uppercase leading-snug">{item.title}</h3>}
+          {item.text && <p className="font-sans text-sm leading-relaxed text-white/75 line-clamp-4">{item.text}</p>}
         </div>
         {item.url && (
           <a
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-shrink-0 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-white/50 hover:text-white hover:border-white/30 transition-colors"
+            className="self-start flex items-center gap-2 font-pixel text-xs border-2 border-neo-lavender bg-neo-purple text-neo-lavender px-3 py-2 neo-press shadow-[2px_2px_0px_0px_var(--color-neo-lavender)]"
           >
-            Read →
+            SOURCE <ExternalLink className="w-3 h-3" />
           </a>
         )}
       </div>
-      {item.why && <p className="text-xs text-white/35 border-t border-white/5 pt-3">{item.why}</p>}
-    </article>
+      {item.why && <p className="font-sans text-xs text-white/50 border-t-2 border-white/10 pt-3 mt-4">{item.why}</p>}
+    </motion.article>
   )
 }
 
@@ -93,60 +99,76 @@ function ClusterCard({ cluster, items }: { cluster: Cluster; items: HighlightIte
   const sources = cluster.trail ?? []
 
   return (
-    <article className="rounded-xl border bg-white/5 p-5 space-y-4 hover:border-white/20 transition-colors"
-      style={{ borderColor: cluster.is_breaking ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.1)' }}
+    <motion.article 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="break-inside-avoid mb-6 flex flex-col border-4 bg-neo-black transition-colors"
+      style={{ 
+        borderColor: cluster.is_breaking ? 'var(--color-neo-lime)' : 'rgba(255,255,255,0.2)',
+        boxShadow: cluster.is_breaking ? '6px 6px 0px 0px var(--color-neo-lime)' : '6px 6px 0px 0px rgba(255,255,255,0.1)'
+      }}
     >
       {/* Header */}
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="bg-neo-purple border-b-4 border-inherit p-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
           {cluster.is_breaking && (
-            <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-semibold text-red-400 uppercase tracking-wider">Breaking</span>
+            <span className="flex items-center gap-1 border-2 border-neo-lime bg-neo-lime px-2 py-1 font-pixel text-xs text-black shadow-[2px_2px_0px_0px_#000]">
+              <Zap className="w-3 h-3" /> BREAKING
+            </span>
           )}
           {cluster.has_conflict && (
-            <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-400">Sources disagree</span>
+            <span className="flex items-center gap-1 border-2 border-[#ef4444] bg-[#ef4444] px-2 py-1 font-pixel text-xs text-white shadow-[2px_2px_0px_0px_#000]">
+              <ShieldAlert className="w-3 h-3" /> CONFLICT
+            </span>
           )}
-          <span className="text-xs text-white/30">
-            {cluster.source_count} source{cluster.source_count !== 1 ? 's' : ''} · {cluster.independent_source_count} independent
+          <span className="font-pixel text-xs text-neo-lavender bg-black/40 px-2 py-1 border border-black">
+            {cluster.source_count} SRC // {cluster.independent_source_count} INDEP
           </span>
         </div>
-        <h3 className="text-sm font-semibold text-white leading-snug">{cluster.title}</h3>
+        <h3 className="font-sans text-xl font-bold text-white uppercase leading-tight">{cluster.title}</h3>
       </div>
 
       {/* Summary bullets */}
-      {hasSummary ? (
-        <ul className="space-y-1.5">
-          {cluster.summary!.summary_json.map((bullet, i) => (
-            <li key={i} className="flex gap-2.5 text-sm text-white/70">
-              <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-violet-400 flex-shrink-0" />
-              {bullet}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-xs text-white/30">Summary processing…</p>
-      )}
+      <div className="p-5">
+        {hasSummary ? (
+          <ul className="space-y-3">
+            {cluster.summary!.summary_json.map((bullet, i) => (
+              <li key={i} className="flex gap-3 font-sans text-sm text-white/90 leading-relaxed">
+                <span className="mt-1.5 w-2 h-2 border border-neo-lime bg-neo-lime flex-shrink-0" />
+                {bullet}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="font-pixel text-sm text-neo-lavender uppercase animate-pulse">PROCESSING INTEL...</p>
+        )}
+      </div>
 
       {/* Source trail */}
       {sources.length > 0 && (
-        <div className="border-t border-white/5 pt-3 space-y-1.5">
-          <p className="text-xs text-white/30 uppercase tracking-wider mb-2">Sources</p>
-          {sources.map((t, i) => (
-            <div key={i} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <SourceBadge source={t.source} isMock={false} />
-                <span className="text-xs text-white/30">{timeAgo(t.timestamp ?? null)}</span>
+        <div className="border-t-4 border-white/10 bg-white/5 p-4">
+          <p className="font-pixel text-xs text-white/50 uppercase mb-3 flex items-center gap-2">
+            <GitMerge className="w-4 h-4" /> SOURCE TRAIL
+          </p>
+          <div className="space-y-2">
+            {sources.map((t, i) => (
+              <div key={i} className="flex items-center justify-between group">
+                <div className="flex items-center gap-3">
+                  <SourceBadge source={t.source} isMock={false} />
+                  <span className="font-pixel text-xs text-white/30">{timeAgo(t.timestamp ?? null)}</span>
+                </div>
+                {t.url && (
+                  <a href={t.url} target="_blank" rel="noopener noreferrer"
+                    className="font-pixel text-xs text-neo-lavender opacity-0 group-hover:opacity-100 transition-opacity border-b-2 border-neo-lavender">
+                    READ
+                  </a>
+                )}
               </div>
-              {t.url && (
-                <a href={t.url} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-violet-400 hover:text-violet-300 transition-colors">
-                  Open →
-                </a>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
-    </article>
+    </motion.article>
   )
 }
 
@@ -158,7 +180,7 @@ export function Highlights() {
 
   const {
     data: forYouData, isLoading: loadingForYou, mutate: refreshForYou,
-  } = useSWR<HighlightItem[]>('/api/for-you', fetcher, { refreshInterval: 60000 })
+  } = useSWR<Resp>('/api/for-you?limit=50', fetcher, { refreshInterval: 60000 })
 
   const [refreshing, setRefreshing] = useState(false)
 
@@ -171,75 +193,82 @@ export function Highlights() {
 
   const summaryItems = summariesData?.items ?? []
   const clusters = summariesData?.clusters ?? {}
-  const forYouItems = Array.isArray(forYouData) ? forYouData : []
+  const forYouItems = forYouData?.items ?? []
 
-  // Deduplicate cluster IDs for summaries
-  const seenClusters = new Set<string>()
-  const storiesAndItems = summaryItems.map((item) => {
-    const cluster = item.cluster_id ? clusters[item.cluster_id] : null
-    if (cluster) {
-      if (seenClusters.has(cluster.id)) return null
-      seenClusters.add(cluster.id)
-      return { type: 'cluster' as const, cluster, items: summaryItems.filter((i) => i.cluster_id === cluster.id) }
-    }
-    return { type: 'item' as const, item }
-  }).filter(Boolean) as ({ type: 'cluster'; cluster: Cluster; items: HighlightItem[] } | { type: 'item'; item: HighlightItem })[]
+  const isLoading = loadingSummaries || loadingForYou
 
-  const isLoading = loadingSummaries && loadingForYou
+  // Keep Highlights as one personalized reading surface, while collapsing
+  // repeated reports into one story and avoiding duplicate item cards.
+  const allItems = [...summaryItems, ...forYouItems]
+  const allClusters = { ...clusters, ...(forYouData?.clusters ?? {}) }
+  const seenItemIds = new Set<string>()
+  const combinedStories = allItems
+    .sort((a, b) => (b.timestamp ? Date.parse(b.timestamp) : 0) - (a.timestamp ? Date.parse(a.timestamp) : 0))
+    .map((item) => {
+      if (seenItemIds.has(item.id)) return null
+      seenItemIds.add(item.id)
+      const cluster = item.cluster_id ? allClusters[item.cluster_id] : null
+      if (!cluster) return { type: 'item' as const, item }
+      return { type: 'cluster' as const, cluster, items: allItems.filter((candidate) => candidate.cluster_id === cluster.id) }
+    })
+  const seenClusterIds = new Set<string>()
+  const highlights = combinedStories.flatMap((entry) => {
+    if (!entry) return []
+    if (entry.type === 'item') return [entry]
+    if (seenClusterIds.has(entry.cluster.id)) return []
+    seenClusterIds.add(entry.cluster.id)
+    return [entry]
+  }).slice(0, 24)
 
   return (
-    <div className="min-h-screen bg-[#0d0d1a] text-white">
-      <div className="max-w-2xl mx-auto px-4 py-10 space-y-10">
+    <div className="min-h-[calc(100vh-64px)] bg-neo-black text-white font-sans">
+      <div className="max-w-7xl mx-auto px-6 py-12 space-y-12">
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b-4 border-white/10 pb-6">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Highlights</h1>
-            <p className="mt-1 text-sm text-white/40">Personalized current information, refreshed for you.</p>
+            <h1 className="font-pixel text-4xl text-white uppercase">SYNTHESIZED INTEL</h1>
+            <p className="mt-3 font-sans text-lg text-white/50">Personalized current information, filtered and compressed.</p>
           </div>
           <button
             onClick={refreshNews}
             disabled={refreshing}
-            className="flex-shrink-0 rounded-xl border border-white/10 px-4 py-2 text-sm text-white/60 hover:text-white hover:border-white/30 transition-colors disabled:opacity-50"
+            className="flex-shrink-0 flex items-center justify-center gap-3 border-4 border-black bg-neo-lime px-6 py-3 font-pixel text-xl text-black uppercase neo-press shadow-neo-lavender disabled:opacity-50"
           >
-            {refreshing ? 'Refreshing…' : 'Refresh'}
+            <RefreshCcw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'SYNCING...' : 'REFRESH'}
           </button>
         </div>
 
         {isLoading && (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-28 rounded-xl bg-white/5 animate-pulse" />
+          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-48 border-4 border-white/10 bg-white/5 animate-pulse break-inside-avoid" />
             ))}
           </div>
         )}
 
-        {/* Stories & summaries */}
-        {storiesAndItems.length > 0 && (
-          <section className="space-y-4">
-            <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">Stories</h2>
-            {storiesAndItems.map((entry, i) =>
-              entry.type === 'cluster'
-                ? <ClusterCard key={entry.cluster.id} cluster={entry.cluster} items={entry.items} />
-                : <HighlightCard key={entry.item.id} item={entry.item} />
-            )}
+        {/* Stories & summaries (Masonry Layout) */}
+        {highlights.length > 0 && (
+          <section className="space-y-6">
+            <div className="flex items-center gap-4">
+              <span className="font-pixel text-xl text-neo-lime uppercase bg-neo-lime/10 px-4 py-2 border-2 border-neo-lime">Current highlights</span>
+              <div className="h-1 flex-1 bg-white/10" />
+            </div>
+            <div className="columns-1 md:columns-2 xl:columns-3 gap-6">
+              {highlights.map((entry) =>
+                entry.type === 'cluster'
+                  ? <ClusterCard key={entry.cluster.id} cluster={entry.cluster} items={entry.items} />
+                  : <HighlightCard key={entry.item.id} item={entry.item} />
+              )}
+            </div>
           </section>
         )}
 
-        {/* For You */}
-        {forYouItems.length > 0 && (
-          <section className="space-y-4">
-            <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">For You</h2>
-            {forYouItems.map((item) => (
-              <HighlightCard key={item.id} item={item as HighlightItem} />
-            ))}
-          </section>
-        )}
-
-        {!isLoading && storiesAndItems.length === 0 && forYouItems.length === 0 && (
-          <div className="rounded-xl border border-dashed border-white/10 p-12 text-center space-y-3">
-            <p className="text-white/30 text-sm">No highlights yet.</p>
-            <p className="text-white/20 text-xs">Click Refresh to fetch the latest news from your sources.</p>
+        {!isLoading && highlights.length === 0 && (
+          <div className="border-4 border-dashed border-white/20 p-16 text-center space-y-4">
+            <p className="font-pixel text-2xl text-white/40 uppercase">NO INTEL DETECTED.</p>
+            <p className="font-sans text-white/30 uppercase tracking-widest">Execute refresh to fetch data streams.</p>
           </div>
         )}
       </div>
