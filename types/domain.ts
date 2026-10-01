@@ -82,6 +82,11 @@ export type AttentionSettings = {
   interruption_budget: number
   current_mode: AttentionMode
   focus_until: string | null
+  session_duration_minutes: number
+  attention_filter: 'all' | 'important' | 'urgent_only'
+  breaking_news_topics: string[]
+  urgent_categories: string[]
+  job_search: Record<string, unknown> | null
 }
 
 export type PriorityPerson = {

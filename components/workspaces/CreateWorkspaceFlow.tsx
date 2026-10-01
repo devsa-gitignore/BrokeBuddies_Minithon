@@ -83,7 +83,7 @@ export function CreateWorkspaceFlow() {
         >
           ← BACK
         </button>
-        <h1 className="font-mono text-2xl font-bold text-[#D2CBFE] uppercase tracking-widest">
+        <h1 className="font-mono text-xs font-bold text-[#D2CBFE] uppercase tracking-widest">
           NEW WORKSPACE
         </h1>
       </div>

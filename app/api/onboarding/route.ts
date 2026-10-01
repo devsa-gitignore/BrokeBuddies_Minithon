@@ -22,8 +22,7 @@ export async function POST(req: Request) {
         onboarding_version: 2,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', user.id)
-      
+
     if (profileError) {
       console.error('Profile update error:', profileError)
       throw profileError
@@ -33,8 +32,7 @@ export async function POST(req: Request) {
         calibration.map((c) => ({
           user_id: user.id,
           item_id: null,
-          action: c.important ? 'calibration_important' : 'calibration_not_important',
-          note: c.key,
+          action: (c.important ? 'calibration_important:' : 'calibration_not_important:') + c.key,
         })),
       )
       if (calibError) {

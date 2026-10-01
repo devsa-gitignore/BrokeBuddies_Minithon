@@ -5,9 +5,9 @@ import type { ClusterRow, ItemRow } from '@/types/domain'
 export async function fetchItems(
   supabase: SupabaseClient, 
   userId: string, 
-  options: { category?: string; limit?: number; includeLow?: boolean; isDismissed?: boolean } = {}
+  options: { category?: string; sourceType?: string; limit?: number; includeLow?: boolean; isDismissed?: boolean } = {}
 ) {
-  const { category, limit = 50, includeLow = false, isDismissed = false } = options
+  const { category, sourceType, limit = 50, includeLow = false, isDismissed = false } = options
 
   let query = supabase
     .from('items')
@@ -18,6 +18,7 @@ export async function fetchItems(
     .limit(limit)
 
   if (category) query = query.eq('category', category)
+  if (sourceType) query = query.eq('source_type', sourceType)
   if (!includeLow) query = query.eq('is_low_priority', false)
   if (isDismissed !== undefined) query = query.eq('is_dismissed', isDismissed)
 

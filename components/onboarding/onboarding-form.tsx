@@ -220,11 +220,14 @@ export function OnboardingForm() {
           calibration: Object.entries(s.calibration).map(([key, important]) => ({ key, important })),
         }),
       })
-      if (!res.ok) throw new Error('save_failed')
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.error?.message || 'save_failed')
+      }
       router.push('/dashboard')
       router.refresh()
-    } catch {
-      setError('System Error. Save Failed.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'System Error. Save Failed.')
       setBusy(false)
     }
   }
@@ -240,7 +243,7 @@ export function OnboardingForm() {
           </div>
           <input
             autoFocus
-            className="w-full md:w-2/3 border-4 border-white/20 bg-transparent px-6 py-4 text-2xl text-white font-pixel uppercase focus:outline-none focus:border-neo-lime placeholder:text-white/20 shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] focus:shadow-neo-lime transition-all"
+            className="w-full md:w-2/3 border-4 border-white/20 bg-transparent px-6 py-4 text-5xl text-white font-pixel uppercase focus:outline-none focus:border-neo-lime placeholder:text-white/20 shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] focus:shadow-neo-lime transition-all"
             placeholder="YOUR NAME (OPTIONAL)"
             value={s.name}
             onChange={(e) => up({ name: e.target.value })}
@@ -467,7 +470,7 @@ export function OnboardingForm() {
           {s.topics.length > 0 && (
             <fieldset className="space-y-4 pt-6 border-t-2 border-white/10">
               <legend className="font-pixel text-xl text-white/70 uppercase">Breaking News Topics</legend>
-              <p className="text-sm text-white/40">Only triggers if rapidly reported by independent sources.</p>
+              <p className="text-3xl text-white/40">Only triggers if rapidly reported by independent sources.</p>
               <div className="flex flex-wrap gap-3">
                 {s.topics.map((t) => (
                   <Chip key={t} label={t} active={s.breakingNewsTopics.includes(t)} onClick={() => up({ breakingNewsTopics: toggle(s.breakingNewsTopics, t) })} />
@@ -499,7 +502,7 @@ export function OnboardingForm() {
                     <div className={`mt-1 w-5 h-5 border-2 flex-shrink-0 ${s.attentionFilter === val ? 'border-neo-lavender bg-neo-lavender' : 'border-white/30'}`} />
                     <div>
                       <p className="font-pixel text-xl text-white uppercase">{label}</p>
-                      <p className="font-sans text-sm text-white/50 mt-1">{desc}</p>
+                      <p className="font-sans text-3xl text-white/50 mt-1">{desc}</p>
                     </div>
                   </label>
                 ))}
@@ -511,7 +514,7 @@ export function OnboardingForm() {
                 {SESSION_DURATIONS.map((d) => (
                   <button key={d} type="button"
                     onClick={() => up({ sessionDuration: d })}
-                    className={`flex-1 border-4 py-4 font-pixel text-2xl transition-colors neo-press ${
+                    className={`flex-1 border-4 py-4 font-pixel text-5xl transition-colors neo-press ${
                       s.sessionDuration === d ? 'border-neo-lavender bg-neo-purple text-neo-lavender shadow-[4px_4px_0px_0px_var(--color-neo-lavender)]' : 'border-white/20 text-white/50 hover:border-white/50'
                     }`}
                   >
@@ -593,7 +596,7 @@ export function OnboardingForm() {
               { label: 'Timezone', value: s.timezone },
             ].map(({ label, value }) => (
               <div key={label} className="flex flex-col gap-1 border-l-4 border-neo-lavender bg-white/5 px-6 py-4">
-                <span className="font-pixel text-sm text-neo-lavender">{label.toUpperCase()}</span>
+                <span className="font-pixel text-3xl text-neo-lavender">{label.toUpperCase()}</span>
                 <span className="font-sans text-white truncate">{value.toUpperCase()}</span>
               </div>
             ))}
@@ -613,7 +616,7 @@ export function OnboardingForm() {
       <div className="w-full max-w-5xl bg-neo-black border-4 border-white/10 shadow-[8px_8px_0px_0px_rgba(255,255,255,0.05)] p-8 md:p-12 relative">
         {/* Header */}
         <div className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6 border-b-4 border-white/10 pb-8">
-          <span className="font-pixel text-2xl text-neo-lime">CONFIG_STEP_{pad(step + 1)}</span>
+          <span className="font-pixel text-5xl text-neo-lime">CONFIG_STEP_{pad(step + 1)}</span>
           <StepIndicator step={step} total={STEPS} />
         </div>
 
@@ -633,12 +636,12 @@ export function OnboardingForm() {
 
           {isLastStep ? (
             <button type="button" onClick={submit} disabled={busy}
-              className="w-full md:w-auto font-pixel text-2xl bg-neo-lime text-black border-4 border-black px-10 py-4 shadow-neo-lavender neo-press disabled:opacity-50">
+              className="w-full md:w-auto font-pixel text-5xl bg-neo-lime text-black border-4 border-black px-10 py-4 shadow-neo-lavender neo-press disabled:opacity-50">
               {busy ? 'SAVING...' : 'FINALIZE SYSTEM'}
             </button>
           ) : (
             <button type="button" onClick={next}
-              className="w-full md:w-auto font-pixel text-2xl bg-white text-black border-4 border-black px-10 py-4 shadow-neo-lime neo-press">
+              className="w-full md:w-auto font-pixel text-5xl bg-white text-black border-4 border-black px-10 py-4 shadow-neo-lime neo-press">
               PROCEED
             </button>
           )}
@@ -647,7 +650,7 @@ export function OnboardingForm() {
         {/* Skip */}
         {step < STEPS - 1 && (
           <div className="absolute top-4 right-4">
-            <button type="button" onClick={() => setStep(STEPS - 1)} className="font-pixel text-xs text-white/30 hover:text-white transition-colors border-b border-white/30">
+            <button type="button" onClick={() => setStep(STEPS - 1)} className="font-pixel text-5xl text-white/30 hover:text-white transition-colors border-b border-white/30">
               SKIP TO REVIEW
             </button>
           </div>

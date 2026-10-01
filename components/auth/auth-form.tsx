@@ -48,7 +48,8 @@ export function AuthForm({ mode }: { mode: 'login' | 'sign-up' }) {
       setBusy(false)
       return
     }
-    router.push('/auth/sign-up-success')
+    router.push('/onboarding')
+    router.refresh()
   }
 
   const isLogin = mode === 'login'

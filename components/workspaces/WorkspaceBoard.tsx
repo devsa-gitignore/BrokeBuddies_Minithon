@@ -38,8 +38,7 @@ function ResourceChip({ resource }: { resource: WorkspaceResourceRow }) {
 // Mermaid diagram panel
 // ──────────────────────────────────────────────
 function DiagramPanel({ mermaid, title }: { mermaid: string; title: string }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [rendered, setRendered] = useState(false)
+  const [svgContent, setSvgContent] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -47,9 +46,8 @@ function DiagramPanel({ mermaid, title }: { mermaid: string; title: string }) {
       m.initialize({ startOnLoad: false, theme: 'dark' })
       const id = `ws-diagram-${Date.now()}`
       m.render(id, mermaid).then(({ svg }: { svg: string }) => {
-        if (!cancelled && ref.current) {
-          ref.current.innerHTML = svg
-          setRendered(true)
+        if (!cancelled) {
+          setSvgContent(svg)
         }
       }).catch(console.error)
     })
@@ -61,10 +59,13 @@ function DiagramPanel({ mermaid, title }: { mermaid: string; title: string }) {
       <p className="font-mono text-[10px] text-[#888888] uppercase tracking-widest mb-2">{title}</p>
       <div
         className="border border-[#2a2a2a] bg-[#0d0d0d] p-4 transition-opacity duration-300 overflow-auto"
-        style={{ opacity: rendered ? 1 : 0.3, minHeight: 180 }}
-        ref={ref}
+        style={{ opacity: svgContent ? 1 : 0.3, minHeight: 180 }}
       >
-        {!rendered && <p className="font-mono text-xs text-[#444444]">RENDERING DIAGRAM...</p>}
+        {!svgContent ? (
+          <p className="font-mono text-xs text-[#444444]">RENDERING DIAGRAM...</p>
+        ) : (
+          <div dangerouslySetInnerHTML={{ __html: svgContent }} />
+        )}
       </div>
     </div>
   )
@@ -406,7 +407,7 @@ export function WorkspaceBoard({
             ← WORKSPACES
           </Link>
           <span className="text-[#2a2a2a]">|</span>
-          <h1 className="font-mono font-bold text-2xl text-[#D2CBFE] uppercase tracking-wide">{workspace.title}</h1>
+          <h1 className="font-mono font-bold text-xs text-[#D2CBFE] uppercase tracking-wide">{workspace.title}</h1>
           <span className="font-mono text-sm text-[#888888]">
             {workspace.domain} · {workspace.resource_count}/30 resources · {workspace.org_status}
           </span>

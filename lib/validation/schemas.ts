@@ -104,6 +104,7 @@ export const feedbackSchema = z.object({
 
 export const itemsQuerySchema = z.object({
   category: z.enum(['people', 'urgent', 'summaries', 'for_you']).optional(),
+  sourceType: z.string().max(60).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   includeLow: z.enum(['true', 'false']).default('false'),
 })

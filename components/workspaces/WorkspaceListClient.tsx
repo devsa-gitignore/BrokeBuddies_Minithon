@@ -19,23 +19,23 @@ function GhostCard({ domain, title, delay }: { domain: string; title: string; de
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 0.3, y: 0 }}
+      animate={{ opacity: 0.8, y: 0 }}
       transition={{ delay, duration: 0.4 }}
-      className="border border-[#1a1a1a] bg-[#022E21]/30"
+      className="border border-white bg-[#022E21]/50"
     >
-      <div className="h-[3px] w-full bg-[#3C183C]/50" />
+      <div className="h-[3px] w-full bg-[#3C183C]/80" />
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <span className="font-mono text-xs uppercase tracking-widest border border-[#2a2a2a] text-[#444444] px-2 py-1">
+          <span className="font-mono text-xs uppercase tracking-widest border border-white text-white px-2 py-1">
             {domain}
           </span>
         </div>
-        <h2 className="font-mono font-bold text-xl text-[#2a2a2a] uppercase tracking-wide leading-tight mb-2">{title}</h2>
-        <p className="font-mono text-sm text-[#222222] mb-6">— — — — — — — — — —</p>
-        <div className="h-[2px] bg-[#1a1a1a] w-full mb-3">
-          <div className="h-full bg-[#1a1a1a] w-0" />
+        <h2 className="font-mono font-bold text-xs text-white uppercase tracking-wide leading-tight mb-2">{title}</h2>
+        <p className="font-mono text-sm text-white mb-6">— — — — — — — — — —</p>
+        <div className="h-[2px] bg-white w-full mb-3">
+          <div className="h-full bg-white w-0" />
         </div>
-        <p className="font-mono text-xs text-[#222222]">0/30 resources</p>
+        <p className="font-mono text-xs text-white">0/30 resources</p>
       </div>
     </motion.div>
   )
@@ -57,7 +57,7 @@ function EmptyState() {
       >
         {/* Pixelated grid icon */}
         <svg width="64" height="64" viewBox="0 0 48 48" fill="none" className="opacity-40">
-          {[0,1,2,3].map(row =>
+          {[0,1,2,3].flatMap(row =>
             [0,1,2,3].map(col => {
               if ((row + col) % 3 === 0) return null
               return (
@@ -75,7 +75,7 @@ function EmptyState() {
         </svg>
 
         <div className="text-center">
-          <p className="font-mono text-2xl font-bold uppercase tracking-widest text-[#D2CBFE] mb-4">
+          <p className="font-mono text-xs font-bold uppercase tracking-widest text-[#D2CBFE] mb-4">
             NO WORKSPACES YET
           </p>
           <p className="font-mono text-sm text-[#888888] leading-relaxed">

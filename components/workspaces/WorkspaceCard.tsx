@@ -68,12 +68,12 @@ export function WorkspaceCard({ workspace, index }: WorkspaceCardProps) {
               {workspace.org_status === 'processing' && (
                 <span className="mr-2 animate-spin inline-block">◐</span>
               )}
-              {statusLabel}
+              <span>{statusLabel}</span>
             </span>
           </div>
 
           {/* Title */}
-          <h2 className="font-mono font-bold text-2xl text-[#D2CBFE] uppercase tracking-wide leading-tight mb-2 group-hover:text-white transition-colors duration-100">
+          <h2 className="font-mono font-bold text-xs text-[#D2CBFE] uppercase tracking-wide leading-tight mb-2 group-hover:text-white transition-colors duration-100">
             {workspace.title}
           </h2>
           <p className="font-mono text-sm text-[#888888] mb-6 truncate">{workspace.subject}</p>

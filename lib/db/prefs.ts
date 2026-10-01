@@ -29,6 +29,11 @@ export async function loadPrefs(db: SupabaseClient, userId: string): Promise<Use
       interruption_budget: s.interruption_budget ?? DEFAULT_SETTINGS.interruption_budget,
       current_mode: s.current_mode ?? 'normal',
       focus_until: s.focus_until ?? null,
+      session_duration_minutes: s.session_duration_minutes ?? 50,
+      attention_filter: (s.attention_filter as 'all' | 'important' | 'urgent_only') ?? 'all',
+      breaking_news_topics: s.breaking_news_topics ?? [],
+      urgent_categories: s.urgent_categories ?? [],
+      job_search: (s.job_search as Record<string, unknown> | null) ?? null,
     },
   }
 }

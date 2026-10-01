@@ -12,11 +12,12 @@ export async function GET(req: Request) {
   if (!user) return apiError('unauthorized', 'Sign in required', 401)
   const q = itemsQuerySchema.safeParse(Object.fromEntries(new URL(req.url).searchParams))
   if (!q.success) return apiError('validation_failed', 'Invalid query', 400)
-  const { category, limit, includeLow } = q.data
+  const { category, sourceType, limit, includeLow } = q.data
 
   try {
     const { items, clusters } = await fetchItems(supabase, user.id, {
       category,
+      sourceType,
       limit,
       includeLow: includeLow === 'true'
     })

@@ -109,8 +109,8 @@ export function WorkspaceHeader({ count, activeFilter, onFilterChange }: Workspa
       <div className="flex items-center justify-between">
         {/* Title + count */}
         <div className="flex items-baseline gap-4">
-          <h1 className="font-mono text-5xl font-bold tracking-widest text-[#D2CBFE] uppercase select-none">
-            {display}
+          <h1 className="font-mono text-xs font-bold tracking-widest text-[#D2CBFE] uppercase select-none">
+            <span>{display}</span>
             {done && (
               <span className="ml-1 animate-[blink_1s_step-end_infinite] text-[#D2CBFE]">_</span>
             )}

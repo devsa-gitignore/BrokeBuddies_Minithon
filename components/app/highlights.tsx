@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { Zap, RefreshCcw, ExternalLink, ShieldAlert, GitMerge, ArrowRight, Filter, Radio, Clock } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Zap, RefreshCcw, ExternalLink, ShieldAlert, GitMerge, ArrowRight, Filter } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 /* ─── Types ──────────────────────────────────────────────────── */
 type HighlightItem = {
@@ -74,10 +74,8 @@ function ItemPin({ item, index }: { item: HighlightItem; index: number }) {
 
   return (
     <motion.article
-      layout
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
       transition={{ delay: index * 0.04, type: 'spring', stiffness: 280, damping: 24 }}
       className="break-inside-avoid mb-5 group relative cursor-pointer"
     >
@@ -151,10 +149,8 @@ function ClusterPin({ cluster, index }: { cluster: Cluster; index: number }) {
 
   return (
     <motion.article
-      layout
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
       transition={{ delay: index * 0.04, type: 'spring', stiffness: 280, damping: 24 }}
       className="break-inside-avoid mb-5 group relative"
     >
@@ -377,24 +373,15 @@ export function Highlights() {
 
         {/* Pinterest masonry board */}
         {!isLoading && pins.length > 0 && (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeCategory}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4"
-            >
-              {pins.map((pin, i) =>
-                pin.type === 'cluster' ? (
-                  <ClusterPin key={pin.key} cluster={pin.cluster} index={i} />
-                ) : (
-                  <ItemPin key={pin.key} item={pin.item} index={i} />
-                )
-              )}
-            </motion.div>
-          </AnimatePresence>
+          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4">
+            {pins.map((pin, i) =>
+              pin.type === 'cluster' ? (
+                <ClusterPin key={pin.key} cluster={pin.cluster} index={i} />
+              ) : (
+                <ItemPin key={pin.key} item={pin.item} index={i} />
+              )
+            )}
+          </div>
         )}
 
         {/* Empty state */}
