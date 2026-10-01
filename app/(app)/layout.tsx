@@ -8,8 +8,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
-  const { data: profile } = await supabase.from('profiles').select('onboarding_completed').eq('id', user.id).maybeSingle()
-  if (!profile?.onboarding_completed) redirect('/onboarding')
+  // TODO: re-enable onboarding gate before launch
+  // const { data: profile } = await supabase.from('profiles').select('onboarding_completed').eq('id', user.id).maybeSingle()
+  // if (!profile?.onboarding_completed) redirect('/onboarding')
 
   return (
     <>
