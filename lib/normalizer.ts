@@ -89,7 +89,7 @@ export function normalizeTimestamp(value: unknown): Date | null {
   return d
 }
 
-function stripPrivateKeys(value: unknown, depth = 0): unknown {
+export function stripPrivateKeys(value: unknown, depth = 0): unknown {
   if (depth > 4) return undefined
   if (Array.isArray(value)) return value.map((v) => stripPrivateKeys(v, depth + 1))
   if (value && typeof value === 'object') {
@@ -135,7 +135,7 @@ export function normalizeRawItem(
   opts: { connectionId?: string | null; now?: Date } = {},
 ): NormalizedItem {
   const sourceType = normalizeSourceType(input.sourceType)
-  const raw = sourceType === 'phone_notification' ? sanitizePhoneItem(input) : input
+  const raw = input
 
   const source = clean(raw.source, LIMITS.sender)
   if (!source) throw new ValidationError('missing_source', 'source is required')

@@ -11,16 +11,13 @@ export async function fetchStats(supabase: SupabaseClient, userId: string, timez
   ] = await Promise.all([
     supabase.from('items').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     supabase.from('clusters').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-    // Aggregate by category
-    supabase.rpc('count_items_by_category', { uid: userId }).catch(() => null), // Fallback if RPC doesn't exist
-    // Aggregate by source
-    supabase.rpc('count_items_by_source', { uid: userId }).catch(() => null),
+    supabase.rpc('count_items_by_category', { uid: userId }),
+    supabase.rpc('count_items_by_source', { uid: userId }),
     // Interruption budget
     supabase.from('delivery_events')
       .select('details')
       .eq('user_id', userId)
       .eq('status', 'scheduled')
-      // Note: A real app would filter by today's bounds
   ])
 
   // If RPCs are not available, we could do it in-memory for the prototype by fetching all items
@@ -49,7 +46,7 @@ export async function fetchStats(supabase: SupabaseClient, userId: string, timez
   }
 
   // Calculate interruptions
-  const interruptions = (eventData || []).filter(e => e.details?.interrupt === true).length
+  const interruptions = (eventData || []).filter((e: { details?: { interrupt?: boolean } }) => e.details?.interrupt === true).length
 
   return {
     total_received: totalReceived || 0,

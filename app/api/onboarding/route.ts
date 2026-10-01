@@ -9,20 +9,27 @@ export async function POST(req: Request) {
     if (!user) return apiError('unauthorized', 'Sign in required', 401)
     const parsed = await parseBody(req, onboardingSchema)
     if ('response' in parsed) return parsed.response
-    const { displayName, sourcesUsed, settings, calibration } = parsed.data
+    const { displayName, purpose, sourcesUsed, settings, calibration } = parsed.data
 
     await applySettingsPatch(supabase, user.id, settings)
-    await supabase
+    const { error: profileError } = await supabase
       .from('profiles')
-      .update({
+      .upsert({
+        id: user.id,
         ...(displayName ? { display_name: displayName } : {}),
         sources_used: sourcesUsed,
         onboarding_completed: true,
+        onboarding_version: 2,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
+      
+    if (profileError) {
+      console.error('Profile update error:', profileError)
+      throw profileError
+    }
     if (calibration.length) {
-      await supabase.from('feedback').insert(
+      const { error: calibError } = await supabase.from('feedback').insert(
         calibration.map((c) => ({
           user_id: user.id,
           item_id: null,
@@ -30,6 +37,10 @@ export async function POST(req: Request) {
           note: c.key,
         })),
       )
+      if (calibError) {
+        console.error('Calibration insert error:', calibError)
+        throw calibError
+      }
     }
     return NextResponse.json({ ok: true })
   } catch (e) {
