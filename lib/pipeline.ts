@@ -4,6 +4,7 @@ import { computeClusterStats, matchCluster, mergeSignature, signatureOf, tokeniz
 import { loadPrefs } from '@/lib/db/prefs'
 import { evaluateItem, type EvalCluster, type EvalResult } from '@/lib/evaluation'
 import { localDayBounds } from '@/lib/timeZone'
+import { updateClusterSummary } from '@/lib/summarizer'
 import type { ClusterRow, ItemRow, NormalizedItem, UserPrefs } from '@/types/domain'
 
 export type IngestOutcome =
@@ -141,6 +142,9 @@ export async function refreshCluster(db: SupabaseClient, userId: string, cluster
     await writeDelivery(db, userId, row.id, clusterId, ev, now)
     if (ev.plan.type === 'interrupt' && row.category !== 'urgent') interrupts += 1
   }
+
+  // Finally, generate or update the AI summary for the cluster
+  await updateClusterSummary(db, clusterId, cluster.title, rows)
 }
 
 /** Promotes earlier ordinary notifications from the same sender once the repeat threshold is met. */

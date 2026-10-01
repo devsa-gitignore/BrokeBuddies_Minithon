@@ -26,7 +26,13 @@ export async function POST(req: Request) {
     const isWebhook = sourceType === 'phone_notification'
     const isMock = sourceType.endsWith('_mock')
     const token = isWebhook ? generateWebhookToken() : null
-    const admin = createAdminClient()
+    let admin: ReturnType<typeof createAdminClient>
+    try {
+      admin = createAdminClient()
+    } catch (err) {
+      console.error('[v0] admin client config error:', err instanceof Error ? err.message : 'unknown')
+      return apiError('config_error', 'Server configuration error', 500)
+    }
     const { data, error } = await admin
       .from('source_connections')
       .insert({

@@ -17,7 +17,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   // Uniform response for any bad token so valid tokens cannot be probed.
   if (!isPlausibleToken(token)) return fail('invalid_token', 'Invalid token', 401)
 
-  const db = createAdminClient()
+  let db: ReturnType<typeof createAdminClient>
+  try {
+    db = createAdminClient()
+  } catch (err) {
+    console.error('[v0] admin client config error:', err instanceof Error ? err.message : 'unknown')
+    return fail('config_error', 'Server configuration error', 500)
+  }
   const { data: conn } = await db
     .from('source_connections')
     .select('id, user_id, source_type, enabled, payload_mapping, status')
@@ -43,8 +49,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
       .eq('id', conn.id)
   }
 
-  const { data: allowed } = await db.rpc('check_webhook_rate_limit', { p_connection: conn.id, p_limit: RATE_LIMIT_PER_MINUTE })
-  if (allowed === false) {
+  const { data: allowed, error: rlError } = await db.rpc('check_webhook_rate_limit', { p_connection: conn.id, p_limit: RATE_LIMIT_PER_MINUTE })
+  if (rlError || allowed === false) {
+    if (rlError) console.error('[v0] rate limit RPC failed:', rlError)
     await logEvent('rejected', 429, 'rate_limited')
     return fail('rate_limited', 'Too many requests', 429)
   }
