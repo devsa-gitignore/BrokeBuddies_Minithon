@@ -21,6 +21,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!user) return apiError('unauthorized', 'Not authenticated', 401)
   const { id } = await params
 
+  const { data: ws } = await supabase.from('workspaces').select('id').eq('id', id).eq('user_id', user.id).maybeSingle()
+  if (!ws) return apiError('not_found', 'Workspace not found', 404)
+
   const parsed = await parseBody(req, NotesSchema)
   if ('response' in parsed) return parsed.response
 

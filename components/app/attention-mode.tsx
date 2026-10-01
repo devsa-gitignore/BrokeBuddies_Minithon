@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Clock, AlertTriangle, Users, Play, Pause, RotateCcw, ChevronDown } from 'lucide-react'
+import { Clock, AlertTriangle, Users, Play, Pause, RotateCcw, ChevronDown, Radio, Info, Activity, ShieldAlert, Zap } from 'lucide-react'
+import { SourcesPanel } from '@/components/sources/sources-panel'
 
 /* ─── Types ──────────────────────────────────────────────────── */
 type AttentionItem = {
@@ -11,17 +12,39 @@ type AttentionItem = {
   source: string
   source_type: string
   sender: string | null
+  title: string | null
+  text: string | null
   timestamp: string | null
   category: string
   importance_score: number
   urgency_score: number
   relevance_score: number
+  novelty_score?: number
   people_kind: string | null
   why: string | null
   act_by: string | null
+  notify_at: string | null
   urgency_evidence: string | null
   is_overdue: boolean
   metadata: Record<string, unknown>
+}
+
+type Cluster = {
+  id: string
+  title: string
+  source_count: number
+  summary: { status: string; summary_json: ({ text: string } | string)[]; model?: string } | null
+}
+
+type StatsResponse = {
+  total_received: number
+  total_unique: number
+  total_clusters: number
+  people_count: number
+  urgent_count: number
+  summary_count: number
+  for_you_count: number
+  skipped_count: number
 }
 
 type Mode = 'Focus' | 'Study' | 'Deep Work' | 'Custom'
@@ -69,6 +92,15 @@ function fmt(secs: number) {
   return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
 }
 
+function timeAgo(ts: string | null) {
+  if (!ts) return ''
+  const diff = Date.now() - new Date(ts).getTime()
+  const h = Math.floor(diff / 3_600_000)
+  if (h < 1) return `${Math.max(1, Math.floor(diff / 60_000))}m ago`
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+
 /* ─── Blocky Progress Bar ─────────────────────────────────────── */
 function BlockyProgressBar({ pct, colorClass, running }: { pct: number; colorClass: string; running: boolean }) {
   const blocks = 20
@@ -92,43 +124,89 @@ function BlockyProgressBar({ pct, colorClass, running }: { pct: number; colorCla
   )
 }
 
-/* ─── Urgency badge ────────────────────────────────────────────── */
-function UrgentCard({ item }: { item: AttentionItem }) {
+/* ─── Explanation / Scores Component ─────────────────────────── */
+function ItemExplanation({ item }: { item: AttentionItem }) {
+  return (
+    <details className="mt-4 border-t-2 border-white/10 pt-3 group outline-none cursor-pointer">
+      <summary className="font-pixel text-[10px] text-white/50 uppercase flex items-center gap-2 group-hover:text-neo-lime transition-colors outline-none select-none">
+        <Info className="w-3 h-3" /> WHY THIS MATTERS
+      </summary>
+      <div className="mt-3 grid grid-cols-2 gap-2 font-pixel text-[10px]">
+        <div className="bg-black/50 p-2 border border-white/10 flex justify-between">
+          <span className="text-white/60">RELEVANCE</span>
+          <span className="text-neo-lime">{item.relevance_score || 0}</span>
+        </div>
+        <div className="bg-black/50 p-2 border border-white/10 flex justify-between">
+          <span className="text-white/60">URGENCY</span>
+          <span className="text-[#ef4444]">{item.urgency_score || 0}</span>
+        </div>
+        <div className="bg-black/50 p-2 border border-white/10 flex justify-between">
+          <span className="text-white/60">IMPORTANCE</span>
+          <span className="text-neo-lavender">{item.importance_score || 0}</span>
+        </div>
+        <div className="bg-black/50 p-2 border border-white/10 flex justify-between">
+          <span className="text-white/60">NOVELTY</span>
+          <span className="text-white">{item.novelty_score || 0}</span>
+        </div>
+      </div>
+      {item.why && (
+        <div className="mt-2 bg-black/30 p-3 border border-white/10">
+          <p className="font-pixel text-[10px] text-white/40 uppercase mb-1">MAIN REASON:</p>
+          <p className="font-sans text-xs text-white/80">{item.why}</p>
+        </div>
+      )}
+    </details>
+  )
+}
+
+/* ─── Item Card ────────────────────────────────────────────── */
+function GenericCard({ item, accentColor, showCountdown }: { item: AttentionItem, accentColor: string, showCountdown?: boolean }) {
   const isOverdue = item.is_overdue
   const actBy = item.act_by ? new Date(item.act_by) : null
+  const notifyAt = item.notify_at ? new Date(item.notify_at) : null
   const minsAway = actBy ? Math.round((actBy.getTime() - Date.now()) / 60000) : null
+  const notifyMinsAway = notifyAt ? Math.round((notifyAt.getTime() - Date.now()) / 60000) : null
 
   return (
     <motion.article 
       initial={{ x: 50, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className={`border-4 p-5 space-y-3 neo-press ${isOverdue ? 'border-neo-lime bg-neo-green shadow-neo-lime' : 'border-neo-lavender bg-neo-purple shadow-neo-lavender'}`}
+      className={`border-4 p-5 space-y-3 neo-press border-white/20 bg-transparent hover:bg-white/5 transition-colors`}
+      style={{ boxShadow: `4px 4px 0px 0px ${accentColor}` }}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
-            {isOverdue && <span className="border-2 border-[#ef4444] bg-[#ef4444] text-white px-2 py-0.5 font-pixel text-xs shadow-[2px_2px_0px_0px_#000]">OVERDUE</span>}
-            {!isOverdue && minsAway !== null && minsAway <= 60 && (
+            {showCountdown && isOverdue && <span className="border-2 border-[#ef4444] bg-[#ef4444] text-white px-2 py-0.5 font-pixel text-xs shadow-[2px_2px_0px_0px_#000]">OVERDUE</span>}
+            {showCountdown && !isOverdue && minsAway !== null && minsAway <= 60 && (
               <span className="border-2 border-neo-lime bg-neo-lime text-black px-2 py-0.5 font-pixel text-xs shadow-[2px_2px_0px_0px_#000]">
                 {minsAway <= 0 ? 'NOW' : `${minsAway}M AWAY`}
               </span>
             )}
-            <span className="font-pixel text-xs text-white/60 uppercase">{item.source}</span>
+            <span className="font-pixel text-[10px] text-white/60 uppercase border border-white/10 px-1">{item.source}</span>
+            <span className="font-pixel text-[10px] text-white/40 uppercase">{timeAgo(item.timestamp)}</span>
           </div>
-          <p className="mt-2 text-lg font-sans text-white uppercase font-bold tracking-wide leading-tight">{item.sender ?? item.source}</p>
+          <p className="mt-2 text-lg font-sans text-white uppercase font-bold tracking-wide leading-tight">{item.title || item.sender || item.source}</p>
           {item.urgency_evidence && <p className="font-sans text-sm text-white/70 mt-1">{item.urgency_evidence}</p>}
         </div>
-        {actBy && (
-          <div className="text-right flex-shrink-0 border-l-2 border-white/20 pl-4">
-            <p className="font-pixel text-xs text-white/60 uppercase">ACTION BY</p>
-            <p className="font-pixel text-xl text-neo-lime mt-1">
-              {actBy.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </p>
-          </div>
-        )}
+        
+        <div className="text-right flex-shrink-0 flex flex-col gap-2">
+          {actBy && (
+            <div className="border-l-2 border-white/20 pl-4">
+              <p className="font-pixel text-[10px] text-white/60 uppercase">ACTION BY</p>
+              <p className="font-pixel text-sm text-[#ef4444] mt-1">{actBy.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+            </div>
+          )}
+          {notifyAt && notifyMinsAway !== null && notifyMinsAway > 0 && (
+            <div className="border-l-2 border-white/20 pl-4">
+              <p className="font-pixel text-[10px] text-white/60 uppercase">DELIVERY AT</p>
+              <p className="font-pixel text-sm text-neo-lavender mt-1">{notifyAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+            </div>
+          )}
+        </div>
       </div>
-      {item.why && <p className="font-sans text-sm text-neo-lavender border-t-2 border-white/10 pt-3">{item.why}</p>}
+      <ItemExplanation item={item} />
     </motion.article>
   )
 }
@@ -148,7 +226,7 @@ function PeopleSection({ items }: { items: AttentionItem[] }) {
             initial={{ x: 50, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="border-4 border-white/20 bg-transparent p-5 neo-press hover:border-neo-lavender hover:bg-neo-purple/50 transition-colors"
+            className="border-4 border-white/20 bg-transparent p-5 neo-press hover:border-neo-lavender hover:bg-neo-purple/20 transition-colors shadow-[4px_4px_0px_0px_#D2CBFE]"
           >
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 border-2 border-neo-lavender bg-neo-lavender text-black flex items-center justify-center font-pixel text-xl shadow-[2px_2px_0px_0px_#fff]">
@@ -156,27 +234,27 @@ function PeopleSection({ items }: { items: AttentionItem[] }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-sans text-lg font-bold text-white uppercase truncate">{item.sender ?? 'UNKNOWN'}</p>
-                <p className="font-pixel text-xs text-neo-lavender uppercase mt-1">{item.source} // {item.people_kind?.replace('_', ' ')}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="font-pixel text-[10px] text-neo-lavender uppercase border border-neo-lavender/30 px-1 bg-neo-lavender/10">{item.source}</span>
+                  <span className="font-pixel text-[10px] text-white/40 uppercase">LAST CONTACT: {timeAgo(item.timestamp)}</span>
+                </div>
               </div>
-              <span className="font-pixel text-xs text-white/50 border-2 border-white/10 px-2 py-1">
-                {item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-              </span>
             </div>
-            {item.why && <p className="mt-4 font-sans text-sm text-white/70 border-t-2 border-white/10 pt-3">{item.why}</p>}
+            <ItemExplanation item={item} />
           </motion.article>
         ))}
       </AnimatePresence>
 
       {ordinary.length > 0 && (
-        <details className="border-4 border-white/10 bg-transparent p-4 group cursor-pointer">
-          <summary className="font-pixel text-sm text-white/60 select-none uppercase group-hover:text-neo-lime transition-colors outline-none">
+        <details className="border-4 border-white/10 bg-transparent p-4 group cursor-pointer shadow-[2px_2px_0px_0px_rgba(255,255,255,0.1)]">
+          <summary className="font-pixel text-sm text-white/60 select-none uppercase group-hover:text-neo-lavender transition-colors outline-none">
             {ordinary.length} MESSAGE{ordinary.length !== 1 ? 'S' : ''} FROM {uniqueSenders.size} CHAT{uniqueSenders.size !== 1 ? 'S' : ''}
           </summary>
           <ul className="mt-4 space-y-3 border-t-2 border-white/10 pt-4">
             {ordinary.map((i) => (
               <li key={i.id} className="flex items-center justify-between font-sans text-sm">
                 <span className="text-white/80 uppercase font-bold">{i.sender ?? 'UNKNOWN'}</span>
-                <span className="font-pixel text-xs text-white/40 uppercase">{i.source} // {i.timestamp ? new Date(i.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+                <span className="font-pixel text-[10px] text-white/40 uppercase">{i.source} // {timeAgo(i.timestamp)}</span>
               </li>
             ))}
           </ul>
@@ -192,6 +270,49 @@ function PeopleSection({ items }: { items: AttentionItem[] }) {
   )
 }
 
+/* ─── Summaries Section ───────────────────────────────────────── */
+function SummariesSection({ clusters }: { clusters: Record<string, Cluster> }) {
+  const list = Object.values(clusters)
+  if (list.length === 0) return null
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between border-b-4 border-white/20 pb-2 mt-12">
+        <h2 className="font-pixel text-2xl text-white uppercase flex items-center gap-3">
+          <Activity className="w-6 h-6" strokeWidth={3} />
+          SUMMARIES
+        </h2>
+        <span className="border-2 border-white bg-white text-black font-pixel px-3 py-1 text-sm shadow-[2px_2px_0px_0px_#000]">
+          {list.length}
+        </span>
+      </div>
+      <div className="space-y-4">
+        {list.map(c => {
+          const summaryArr = c.summary?.summary_json || []
+          const bullets = summaryArr.map(s => typeof s === 'string' ? s : s.text)
+          return (
+            <article key={c.id} className="border-4 border-white/20 p-5 bg-white/5 shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)]">
+              <h3 className="font-sans text-lg font-bold text-white uppercase mb-2">{c.title}</h3>
+              <p className="font-pixel text-[10px] text-neo-lime uppercase mb-4 border border-neo-lime/30 inline-block px-2 bg-neo-lime/10">
+                {c.source_count} SOURCES CLUSTERED
+              </p>
+              {bullets.length > 0 && (
+                <ul className="space-y-2 mb-4">
+                  {bullets.slice(0, 3).map((b, i) => (
+                    <li key={i} className="font-sans text-sm text-white/80 pl-4 relative before:content-[''] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:bg-neo-lavender">
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 /* ─── Main component ──────────────────────────────────────────── */
 export function AttentionMode() {
   const [mode, setMode] = useState<Mode>('Focus')
@@ -200,26 +321,51 @@ export function AttentionMode() {
   const duration = mode === 'Custom' ? customDuration * 60 : MODE_DURATIONS[mode] * 60
   const { remaining, running, pct, start, pause, reset } = useTimer(duration)
 
+  const { data: stats } = useSWR<StatsResponse>('/api/stats', fetcher, { refreshInterval: 30000 })
   const { data: urgentData } = useSWR<{ items: AttentionItem[] }>('/api/urgent', fetcher, { refreshInterval: 30000 })
   const { data: peopleData } = useSWR<{ items: AttentionItem[] }>('/api/people', fetcher, { refreshInterval: 30000 })
+  const { data: summariesData } = useSWR<{ clusters: Record<string, Cluster> }>('/api/summaries', fetcher, { refreshInterval: 30000 })
+  const { data: forYouData } = useSWR<{ items: AttentionItem[] }>('/api/for-you', fetcher, { refreshInterval: 30000 })
+  const { data: skippedData } = useSWR<{ items: AttentionItem[] }>('/api/skipped', fetcher, { refreshInterval: 30000 })
 
   const urgentItems = urgentData?.items ?? []
   const peopleItems = peopleData?.items ?? []
+  const clusters = summariesData?.clusters ?? {}
+  const forYouItems = forYouData?.items ?? []
+  const skippedItems = skippedData?.items ?? []
 
   const modeStyle = MODE_COLORS[mode]
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-neo-black text-white p-6 md:p-12 font-sans overflow-x-hidden">
+      
+      {/* ── Top Header ──────────────────────────────────────────── */}
+      <header className="max-w-7xl mx-auto mb-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div>
+          <h1 className="font-pixel text-4xl text-white uppercase tracking-wider mb-2">ATTENTION</h1>
+          {stats && (
+            <p className="font-pixel text-[10px] text-white/50 uppercase flex flex-wrap gap-x-4 gap-y-2">
+              <span>TODAY:</span>
+              <span><strong className="text-white">{stats.total_received}</strong> RECEIVED</span>
+              <span><strong className="text-neo-lime">{stats.urgent_count}</strong> URGENT</span>
+              <span><strong className="text-neo-lavender">{stats.people_count}</strong> PEOPLE</span>
+              <span><strong className="text-white">{stats.summary_count}</strong> SUMMARIES</span>
+              <span><strong className="text-white/40">{stats.skipped_count}</strong> SKIPPED</span>
+            </p>
+          )}
+        </div>
+      </header>
+
       <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-12">
 
         {/* ── Timer Section (Left) ────────────────────────────────── */}
         <section className="lg:col-span-5 flex flex-col items-center lg:items-start gap-8">
           
           <div className="w-full flex items-center justify-between border-b-4 border-white/10 pb-6">
-            <h1 className="font-pixel text-3xl text-white uppercase flex items-center gap-3">
-              <Clock className="w-8 h-8 text-neo-lime" strokeWidth={3} />
+            <h2 className="font-pixel text-2xl text-white uppercase flex items-center gap-3">
+              <Clock className="w-6 h-6 text-neo-lime" strokeWidth={3} />
               TIMER_SYS
-            </h1>
+            </h2>
             
             {/* Mode selector */}
             <div className="relative">
@@ -291,38 +437,35 @@ export function AttentionMode() {
           
           {/* Urgent */}
           <div className="space-y-6">
-            <div className="flex items-center justify-between border-b-4 border-neo-lime pb-2">
-              <h2 className="font-pixel text-2xl text-neo-lime uppercase flex items-center gap-3">
+            <div className="flex items-center justify-between border-b-4 border-[#ef4444] pb-2">
+              <h2 className="font-pixel text-2xl text-[#ef4444] uppercase flex items-center gap-3">
                 <AlertTriangle className="w-6 h-6" strokeWidth={3} />
-                URGENT_QUEUE
+                URGENT
               </h2>
               {urgentItems.length > 0 && (
-                <span className="border-2 border-neo-lime bg-neo-lime text-black font-pixel px-3 py-1 text-sm shadow-[2px_2px_0px_0px_#000]">
+                <span className="border-2 border-[#ef4444] bg-[#ef4444] text-white font-pixel px-3 py-1 text-sm shadow-[2px_2px_0px_0px_#000]">
                   {urgentItems.length}
                 </span>
               )}
             </div>
             
             {urgentItems.length === 0 ? (
-              <div className="border-4 border-dashed border-white/20 p-10 text-center flex flex-col items-center gap-4">
-                <div className="w-12 h-12 border-4 border-white/20 rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-neo-lime rounded-full" />
-                </div>
-                <p className="font-pixel text-sm text-white/40 uppercase">NO URGENT ITEMS. FOCUS MAINTAINED.</p>
+              <div className="border-4 border-dashed border-white/20 p-10 text-center">
+                <p className="font-pixel text-sm text-white/40 uppercase">NO URGENT ITEMS.</p>
               </div>
             ) : (
               <div className="space-y-6">
-                {urgentItems.map((item) => <UrgentCard key={item.id} item={item} />)}
+                {urgentItems.map((item) => <GenericCard key={item.id} item={item} accentColor="#ef4444" showCountdown />)}
               </div>
             )}
           </div>
 
           {/* People */}
-          <div className="space-y-6">
+          <div className="space-y-6 mt-6">
             <div className="flex items-center justify-between border-b-4 border-neo-lavender pb-2">
               <h2 className="font-pixel text-2xl text-neo-lavender uppercase flex items-center gap-3">
                 <Users className="w-6 h-6" strokeWidth={3} />
-                CONTACT_INTEL
+                PEOPLE
               </h2>
               {peopleItems.length > 0 && (
                 <span className="border-2 border-neo-lavender bg-neo-lavender text-black font-pixel px-3 py-1 text-sm shadow-[2px_2px_0px_0px_#000]">
@@ -333,7 +476,48 @@ export function AttentionMode() {
             <PeopleSection items={peopleItems} />
           </div>
 
+          {/* Summaries */}
+          <SummariesSection clusters={clusters} />
+
+          {/* For You */}
+          {forYouItems.length > 0 && (
+            <div className="space-y-6 mt-12">
+              <div className="flex items-center justify-between border-b-4 border-white/20 pb-2">
+                <h2 className="font-pixel text-2xl text-white/60 uppercase flex items-center gap-3">
+                  <Zap className="w-6 h-6" strokeWidth={3} />
+                  FOR YOU
+                </h2>
+                <span className="border-2 border-white/20 bg-transparent text-white/60 font-pixel px-3 py-1 text-sm">
+                  {forYouItems.length}
+                </span>
+              </div>
+              <div className="space-y-6">
+                {forYouItems.map((item) => <GenericCard key={item.id} item={item} accentColor="#ffffff" />)}
+              </div>
+            </div>
+          )}
+
+          {/* Skipped */}
+          {skippedItems.length > 0 && (
+            <div className="mt-12 border-4 border-dashed border-white/20 p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+              <p className="font-pixel text-sm text-white/40 uppercase flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4" /> {stats?.skipped_count || skippedItems.length} ITEMS SKIPPED
+              </p>
+              <button className="border-2 border-white/20 px-4 py-2 font-pixel text-[10px] text-white/60 hover:bg-white/10 uppercase transition-colors">
+                REVIEW SKIPPED
+              </button>
+            </div>
+          )}
+
         </section>
+      </div>
+      
+      {/* ── Webhooks Section (Bottom) ───────────────────────────── */}
+      <div className="max-w-7xl mx-auto mt-24 pt-16 border-t-4 border-white/10 relative">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-neo-black px-4 font-pixel text-[10px] text-white/40 uppercase">
+          DATA CONNECTORS
+        </div>
+        <SourcesPanel />
       </div>
     </div>
   )

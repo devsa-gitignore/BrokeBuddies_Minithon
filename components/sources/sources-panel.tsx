@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { Button } from '@/components/ui/button'
+import { Zap, RefreshCcw, Webhook, Settings2, Trash2, Key, Check } from 'lucide-react'
 
 type Conn = {
   id: string
@@ -72,62 +72,135 @@ export function SourcesPanel() {
   const [editingMapping, setEditingMapping] = useState<string | null>(null)
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Sources</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Connect a phone automation (for example Tasker or Shortcuts) that POSTs notification metadata to your private webhook. Message bodies are never stored.
-        </p>
-      </div>
-      <Button onClick={create}>Add phone webhook</Button>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {reveal && (
-        <div role="status" className="space-y-2 rounded-lg border border-border bg-card p-4 text-sm">
-          <p className="font-medium">Copy your webhook URL now. It will not be shown again.</p>
-          <code className="block break-all rounded bg-muted p-2 text-xs">{reveal.url}</code>
-          <p className="text-xs text-muted-foreground">
-            POST JSON such as {'{"app":"WhatsApp","sender":"Maya","timestamp":"2026-01-10T09:30:00Z","type":"message"}'}.
+    <div className="w-full space-y-8">
+      {/* Header section */}
+        <div className="border-4 border-black bg-neo-purple p-6 md:p-8 shadow-[8px_8px_0px_0px_#000]">
+          <h1 className="font-pixel text-4xl text-black uppercase flex items-center gap-4">
+            <Webhook className="w-10 h-10" /> DATA CONNECTORS
+          </h1>
+          <p className="mt-4 font-sans text-black/80 font-bold max-w-2xl leading-relaxed">
+            Connect a phone automation (like Tasker or Shortcuts) that POSTs notification metadata to your private webhook. 
+            Message bodies are evaluated but never stored permanently.
           </p>
+          <div className="mt-6 flex flex-wrap gap-4">
+            <button 
+              onClick={create}
+              className="flex items-center gap-2 border-4 border-black bg-neo-lime px-6 py-3 font-pixel text-sm text-black uppercase hover:-translate-y-1 transition-transform shadow-[4px_4px_0px_0px_#000]"
+            >
+              <Zap className="w-4 h-4" /> ADD WEBHOOK
+            </button>
+          </div>
+          {error && (
+            <div className="mt-4 border-4 border-black bg-[#ef4444] p-3 text-white font-pixel text-xs uppercase shadow-[4px_4px_0px_0px_#000]">
+              ERR: {error}
+            </div>
+          )}
         </div>
-      )}
-      <ul className="space-y-3">
-        {(data?.connections ?? []).map((c) => (
-          <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-4">
-            <div className="text-sm">
-              <p className="font-medium">
-                {c.name} <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-xs">{c.status}</span>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {c.token_hint ? `Token ${c.token_hint} · ` : ''}
-                {c.events_received} received
-                {c.last_received_at ? ` · last ${new Date(c.last_received_at).toLocaleString()}` : ' · nothing received yet'}
-              </p>
-              {c.last_error && <p className="text-xs text-destructive">Last error: {c.last_error}</p>}
+
+        {/* Reveal Token Alert */}
+        {reveal && (
+          <div className="border-4 border-black bg-neo-lime p-6 shadow-[6px_6px_0px_0px_#000] text-black space-y-4 animate-in slide-in-from-top-4">
+            <h3 className="font-pixel text-xl uppercase flex items-center gap-2">
+              <Key className="w-6 h-6" /> WEBHOOK TOKEN GENERATED
+            </h3>
+            <p className="font-sans font-bold text-sm">
+              Copy your webhook URL now. For security, it will not be shown again.
+            </p>
+            <div className="bg-black text-neo-lime font-mono text-sm p-4 border-2 border-black break-all select-all">
+              {reveal.url}
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setEditingMapping(editingMapping === c.id ? null : c.id)}>
-                {editingMapping === c.id ? 'Close mapping' : 'Edit mapping'}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => rotate(c)}>
-                Rotate token
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => toggle(c)}>
-                {c.enabled ? 'Disable' : 'Enable'}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => remove(c)}>
-                Delete
-              </Button>
+            <p className="font-sans text-xs font-medium opacity-80">
+              EXAMPLE PAYLOAD: {'{"app":"WhatsApp","sender":"Maya","timestamp":"2026-01-10T09:30:00Z","type":"message"}'}
+            </p>
+          </div>
+        )}
+
+        {/* Connections List */}
+        <div className="space-y-6">
+          {(data?.connections ?? []).map((c) => (
+            <div key={c.id} className="border-4 border-black bg-[#1a1a1a] shadow-[6px_6px_0px_0px_#CDFC8A] transition-all hover:-translate-y-1">
+              {/* Card Header Color Bar */}
+              <div className={`h-2 ${c.enabled ? 'bg-neo-lime' : 'bg-white/20'}`} />
+              
+              <div className="p-6">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                  
+                  {/* Info Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-pixel text-xl text-white uppercase">{c.name}</h3>
+                      <span className={`font-pixel text-[10px] px-2 py-1 uppercase border-2 border-black text-black ${c.status === 'live' ? 'bg-neo-lime' : c.status === 'disabled' ? 'bg-white/40' : 'bg-neo-lavender'}`}>
+                        {c.status}
+                      </span>
+                      {!c.enabled && (
+                        <span className="font-pixel text-[10px] px-2 py-1 uppercase border-2 border-black bg-[#ef4444] text-white">
+                          DISABLED
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="font-sans text-sm text-white/60 space-y-1">
+                      {c.token_hint && <p><span className="text-white/40 font-pixel text-[10px] uppercase mr-2">TOKEN</span> {c.token_hint}</p>}
+                      <p><span className="text-white/40 font-pixel text-[10px] uppercase mr-2">EVENTS</span> {c.events_received} RECEIVED</p>
+                      <p><span className="text-white/40 font-pixel text-[10px] uppercase mr-2">LAST SEEN</span> {c.last_received_at ? new Date(c.last_received_at).toLocaleString() : 'NEVER'}</p>
+                    </div>
+
+                    {c.last_error && (
+                      <div className="mt-2 inline-block border-2 border-black bg-[#ef4444] px-3 py-1.5 font-sans text-xs text-white font-bold uppercase">
+                        LAST ERROR: {c.last_error}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-wrap gap-3 self-start">
+                    <button 
+                      onClick={() => setEditingMapping(editingMapping === c.id ? null : c.id)}
+                      className="border-2 border-black bg-white/10 hover:bg-white/20 px-3 py-2 font-pixel text-[10px] uppercase transition-colors"
+                    >
+                      <Settings2 className="w-3 h-3 inline mr-1.5" />
+                      {editingMapping === c.id ? 'CLOSE MAPPING' : 'EDIT MAPPING'}
+                    </button>
+                    <button 
+                      onClick={() => rotate(c)}
+                      className="border-2 border-black bg-neo-lavender text-black hover:brightness-110 px-3 py-2 font-pixel text-[10px] uppercase transition-colors"
+                    >
+                      <RefreshCcw className="w-3 h-3 inline mr-1.5" /> ROTATE TOKEN
+                    </button>
+                    <button 
+                      onClick={() => toggle(c)}
+                      className={`border-2 border-black text-black px-3 py-2 font-pixel text-[10px] uppercase transition-colors ${c.enabled ? 'bg-white/60 hover:bg-white/80' : 'bg-neo-lime hover:brightness-110'}`}
+                    >
+                      {c.enabled ? 'DISABLE' : 'ENABLE'}
+                    </button>
+                    <button 
+                      onClick={() => remove(c)}
+                      className="border-2 border-black bg-transparent text-white/40 hover:bg-[#ef4444] hover:text-white px-3 py-2 font-pixel text-[10px] uppercase transition-colors"
+                    >
+                      <Trash2 className="w-3 h-3 inline mr-1.5" /> DELETE
+                    </button>
+                  </div>
+                </div>
+
+                {/* Mapping Editor Drawer */}
+                {editingMapping === c.id && (
+                  <div className="mt-6 border-t-2 border-white/10 pt-6 animate-in slide-in-from-top-2">
+                    <MappingEditor 
+                      initialMapping={c.payload_mapping || {}} 
+                      onSave={(m) => { updateMapping(c, m); setEditingMapping(null); }}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-            {editingMapping === c.id && (
-              <MappingEditor 
-                initialMapping={c.payload_mapping || {}} 
-                onSave={(m) => { updateMapping(c, m); setEditingMapping(null); }}
-              />
-            )}
-          </li>
-        ))}
-        {data && data.connections.length === 0 && <li className="text-sm text-muted-foreground">No sources connected yet.</li>}
-      </ul>
+          ))}
+
+          {data && data.connections.length === 0 && (
+            <div className="border-4 border-dashed border-white/20 p-12 text-center">
+              <p className="font-pixel text-xl text-white/40 uppercase">NO CONNECTIONS CONFIGURED</p>
+            </div>
+          )}
+        </div>
     </div>
   )
 }
@@ -149,18 +222,32 @@ function MappingEditor({ initialMapping, onSave }: { initialMapping: Record<stri
   }
 
   return (
-    <div className="mt-4 w-full space-y-2 rounded border bg-muted/50 p-4">
-      <p className="text-xs font-medium">Payload Mapping (JSON)</p>
-      <p className="text-xs text-muted-foreground">
-        Map internal fields to your webhook's JSON paths. Valid fields: <code className="text-[10px]">externalId, source, appName, packageName, sender, title, body, notificationType, timestamp, url</code>
-      </p>
+    <div className="bg-black/50 p-5 border-2 border-white/10 space-y-4">
+      <div>
+        <p className="font-pixel text-xs text-neo-lime uppercase mb-2">Payload Mapping (JSON)</p>
+        <p className="font-sans text-xs text-white/60">
+          Map internal fields to your webhook's JSON paths. Valid fields: <code className="text-neo-lavender px-1 bg-white/10">externalId, source, appName, packageName, sender, title, body, notificationType, timestamp, url</code>
+        </p>
+      </div>
+      
       <textarea
-        className="w-full h-32 rounded border bg-background p-2 text-xs font-mono"
+        className="w-full h-40 rounded-none border-2 border-white/20 bg-black text-white p-4 font-mono text-sm focus:outline-none focus:border-neo-lime transition-colors"
         value={text}
         onChange={(e) => { setText(e.target.value); setErr(null); }}
+        spellCheck={false}
       />
-      {err && <p className="text-xs text-destructive">{err}</p>}
-      <Button size="sm" onClick={handleSave}>Save mapping</Button>
+      
+      <div className="flex items-center justify-between">
+        {err ? (
+          <p className="font-pixel text-[10px] text-[#ef4444] uppercase">ERR: {err}</p>
+        ) : <div />}
+        <button 
+          onClick={handleSave}
+          className="border-2 border-black bg-neo-lime px-4 py-2 font-pixel text-[10px] text-black uppercase hover:-translate-y-0.5 transition-transform shadow-[2px_2px_0px_0px_#000]"
+        >
+          <Check className="w-3 h-3 inline mr-1" /> SAVE MAPPING
+        </button>
+      </div>
     </div>
   )
 }
