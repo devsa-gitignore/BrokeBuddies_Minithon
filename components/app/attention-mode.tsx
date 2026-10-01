@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Clock, AlertTriangle, Users, Play, Pause, RotateCcw, ChevronDown } from 'lucide-react'
 
 /* ─── Types ──────────────────────────────────────────────────── */
 type AttentionItem = {
@@ -27,10 +29,10 @@ type Mode = 'Focus' | 'Study' | 'Deep Work' | 'Custom'
 const MODES: Mode[] = ['Focus', 'Study', 'Deep Work', 'Custom']
 const MODE_DURATIONS: Record<Mode, number> = { Focus: 25, Study: 50, 'Deep Work': 90, Custom: 50 }
 const MODE_COLORS: Record<Mode, string> = {
-  Focus: 'from-orange-500 to-rose-500',
-  Study: 'from-violet-500 to-indigo-500',
-  'Deep Work': 'from-blue-500 to-cyan-500',
-  Custom: 'from-emerald-500 to-teal-500',
+  Focus: 'bg-neo-lime text-black border-black shadow-neo-lavender',
+  Study: 'bg-neo-lavender text-black border-black shadow-neo-purple',
+  'Deep Work': 'bg-neo-purple text-neo-lime border-white shadow-neo-lime',
+  Custom: 'bg-neo-green text-neo-lime border-white shadow-neo-lavender',
 }
 
 const fetcher = (url: string) =>
@@ -67,28 +69,26 @@ function fmt(secs: number) {
   return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
 }
 
-/* ─── Ring SVG ────────────────────────────────────────────────── */
-function Ring({ pct, gradient }: { pct: number; gradient: string }) {
-  const r = 110
-  const circ = 2 * Math.PI * r
-  const dash = circ * pct
+/* ─── Blocky Progress Bar ─────────────────────────────────────── */
+function BlockyProgressBar({ pct, colorClass, running }: { pct: number; colorClass: string; running: boolean }) {
+  const blocks = 20
+  const activeBlocks = Math.ceil(pct * blocks)
+  
   return (
-    <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 260 260">
-      <defs>
-        <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor={gradient.includes('violet') ? '#8b5cf6' : gradient.includes('orange') ? '#f97316' : gradient.includes('blue') ? '#3b82f6' : '#10b981'} />
-          <stop offset="100%" stopColor={gradient.includes('rose') ? '#f43f5e' : gradient.includes('indigo') ? '#6366f1' : gradient.includes('cyan') ? '#06b6d4' : '#14b8a6'} />
-        </linearGradient>
-      </defs>
-      <circle cx="130" cy="130" r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
-      <circle
-        cx="130" cy="130" r={r} fill="none"
-        stroke="url(#ring-grad)" strokeWidth="8"
-        strokeDasharray={`${dash} ${circ}`}
-        strokeLinecap="round"
-        style={{ transition: 'stroke-dasharray 0.5s ease' }}
-      />
-    </svg>
+    <div className="flex flex-col gap-1 w-full max-w-xs mt-8">
+      <div className="flex gap-1 h-8 w-full border-4 border-white/20 p-1">
+        {Array.from({ length: blocks }).map((_, i) => (
+          <div 
+            key={i} 
+            className={`flex-1 transition-all duration-300 ${i < activeBlocks ? (running ? 'bg-neo-lime' : 'bg-neo-lavender') : 'bg-transparent'}`}
+          />
+        ))}
+      </div>
+      <div className="flex justify-between font-pixel text-xs text-white/50 px-1 uppercase">
+        <span>0%</span>
+        <span>100%</span>
+      </div>
+    </div>
   )
 }
 
@@ -99,32 +99,37 @@ function UrgentCard({ item }: { item: AttentionItem }) {
   const minsAway = actBy ? Math.round((actBy.getTime() - Date.now()) / 60000) : null
 
   return (
-    <article className={`rounded-xl border p-4 space-y-2 ${isOverdue ? 'border-red-500/40 bg-red-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}>
-      <div className="flex items-start justify-between gap-3">
+    <motion.article 
+      initial={{ x: 50, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      className={`border-4 p-5 space-y-3 neo-press ${isOverdue ? 'border-neo-lime bg-neo-green shadow-neo-lime' : 'border-neo-lavender bg-neo-purple shadow-neo-lavender'}`}
+    >
+      <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            {isOverdue && <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs text-red-400 font-medium">Overdue</span>}
+          <div className="flex items-center gap-3 flex-wrap">
+            {isOverdue && <span className="border-2 border-[#ef4444] bg-[#ef4444] text-white px-2 py-0.5 font-pixel text-xs shadow-[2px_2px_0px_0px_#000]">OVERDUE</span>}
             {!isOverdue && minsAway !== null && minsAway <= 60 && (
-              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-400 font-medium">
-                {minsAway <= 0 ? 'Now' : `${minsAway}m away`}
+              <span className="border-2 border-neo-lime bg-neo-lime text-black px-2 py-0.5 font-pixel text-xs shadow-[2px_2px_0px_0px_#000]">
+                {minsAway <= 0 ? 'NOW' : `${minsAway}M AWAY`}
               </span>
             )}
-            <span className="text-xs text-white/40">{item.source}</span>
+            <span className="font-pixel text-xs text-white/60 uppercase">{item.source}</span>
           </div>
-          <p className="mt-1 text-sm font-medium text-white">{item.sender ?? item.source}</p>
-          {item.urgency_evidence && <p className="text-xs text-white/50 mt-0.5">{item.urgency_evidence}</p>}
+          <p className="mt-2 text-lg font-sans text-white uppercase font-bold tracking-wide leading-tight">{item.sender ?? item.source}</p>
+          {item.urgency_evidence && <p className="font-sans text-sm text-white/70 mt-1">{item.urgency_evidence}</p>}
         </div>
         {actBy && (
-          <div className="text-right flex-shrink-0">
-            <p className="text-xs text-white/40">Action by</p>
-            <p className="text-sm font-medium text-amber-300">
+          <div className="text-right flex-shrink-0 border-l-2 border-white/20 pl-4">
+            <p className="font-pixel text-xs text-white/60 uppercase">ACTION BY</p>
+            <p className="font-pixel text-xl text-neo-lime mt-1">
               {actBy.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
         )}
       </div>
-      {item.why && <p className="text-xs text-white/40 border-t border-white/5 pt-2">{item.why}</p>}
-    </article>
+      {item.why && <p className="font-sans text-sm text-neo-lavender border-t-2 border-white/10 pt-3">{item.why}</p>}
+    </motion.article>
   )
 }
 
@@ -135,33 +140,43 @@ function PeopleSection({ items }: { items: AttentionItem[] }) {
   const uniqueSenders = new Set(ordinary.map((i) => i.sender ?? '?'))
 
   return (
-    <div className="space-y-3">
-      {priority.map((item) => (
-        <article key={item.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-violet-500/20 flex items-center justify-center text-sm font-medium text-violet-300">
-              {(item.sender ?? '?')[0].toUpperCase()}
+    <div className="space-y-4">
+      <AnimatePresence>
+        {priority.map((item) => (
+          <motion.article 
+            key={item.id}
+            initial={{ x: 50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="border-4 border-white/20 bg-transparent p-5 neo-press hover:border-neo-lavender hover:bg-neo-purple/50 transition-colors"
+          >
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 border-2 border-neo-lavender bg-neo-lavender text-black flex items-center justify-center font-pixel text-xl shadow-[2px_2px_0px_0px_#fff]">
+                {(item.sender ?? '?')[0].toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-sans text-lg font-bold text-white uppercase truncate">{item.sender ?? 'UNKNOWN'}</p>
+                <p className="font-pixel text-xs text-neo-lavender uppercase mt-1">{item.source} // {item.people_kind?.replace('_', ' ')}</p>
+              </div>
+              <span className="font-pixel text-xs text-white/50 border-2 border-white/10 px-2 py-1">
+                {item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+              </span>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white">{item.sender ?? 'Unknown'}</p>
-              <p className="text-xs text-white/40">{item.source} · {item.people_kind?.replace('_', ' ')}</p>
-            </div>
-            <span className="text-xs text-white/30">{item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-          </div>
-          {item.why && <p className="mt-2 text-xs text-white/40">{item.why}</p>}
-        </article>
-      ))}
+            {item.why && <p className="mt-4 font-sans text-sm text-white/70 border-t-2 border-white/10 pt-3">{item.why}</p>}
+          </motion.article>
+        ))}
+      </AnimatePresence>
 
       {ordinary.length > 0 && (
-        <details className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <summary className="cursor-pointer text-sm text-white/60 select-none">
-            {ordinary.length} message{ordinary.length !== 1 ? 's' : ''} from {uniqueSenders.size} chat{uniqueSenders.size !== 1 ? 's' : ''}
+        <details className="border-4 border-white/10 bg-transparent p-4 group cursor-pointer">
+          <summary className="font-pixel text-sm text-white/60 select-none uppercase group-hover:text-neo-lime transition-colors outline-none">
+            {ordinary.length} MESSAGE{ordinary.length !== 1 ? 'S' : ''} FROM {uniqueSenders.size} CHAT{uniqueSenders.size !== 1 ? 'S' : ''}
           </summary>
-          <ul className="mt-3 space-y-2">
+          <ul className="mt-4 space-y-3 border-t-2 border-white/10 pt-4">
             {ordinary.map((i) => (
-              <li key={i.id} className="flex items-center justify-between text-sm">
-                <span className="text-white/70">{i.sender ?? 'Unknown'}</span>
-                <span className="text-xs text-white/30">{i.source} · {i.timestamp ? new Date(i.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+              <li key={i.id} className="flex items-center justify-between font-sans text-sm">
+                <span className="text-white/80 uppercase font-bold">{i.sender ?? 'UNKNOWN'}</span>
+                <span className="font-pixel text-xs text-white/40 uppercase">{i.source} // {i.timestamp ? new Date(i.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</span>
               </li>
             ))}
           </ul>
@@ -169,7 +184,9 @@ function PeopleSection({ items }: { items: AttentionItem[] }) {
       )}
 
       {items.length === 0 && (
-        <p className="text-sm text-white/30 text-center py-4">No contact activity right now.</p>
+        <div className="border-4 border-dashed border-white/20 p-8 text-center">
+          <p className="font-pixel text-sm text-white/40 uppercase">NO COMMS DETECTED.</p>
+        </div>
       )}
     </div>
   )
@@ -177,7 +194,7 @@ function PeopleSection({ items }: { items: AttentionItem[] }) {
 
 /* ─── Main component ──────────────────────────────────────────── */
 export function AttentionMode() {
-  const [mode, setMode] = useState<Mode>('Study')
+  const [mode, setMode] = useState<Mode>('Focus')
   const [customDuration, setCustomDuration] = useState(50)
   const [showModeMenu, setShowModeMenu] = useState(false)
   const duration = mode === 'Custom' ? customDuration * 60 : MODE_DURATIONS[mode] * 60
@@ -189,114 +206,134 @@ export function AttentionMode() {
   const urgentItems = urgentData?.items ?? []
   const peopleItems = peopleData?.items ?? []
 
-  const grad = MODE_COLORS[mode]
+  const modeStyle = MODE_COLORS[mode]
 
   return (
-    <div className="min-h-screen bg-[#0d0d1a] text-white">
-      <div className="max-w-2xl mx-auto px-4 py-10 space-y-12">
+    <div className="min-h-[calc(100vh-64px)] bg-neo-black text-white p-6 md:p-12 font-sans overflow-x-hidden">
+      <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-12">
 
-        {/* ── Timer ────────────────────────────────── */}
-        <section className="flex flex-col items-center gap-6">
-          {/* Mode selector */}
-          <div className="relative">
+        {/* ── Timer Section (Left) ────────────────────────────────── */}
+        <section className="lg:col-span-5 flex flex-col items-center lg:items-start gap-8">
+          
+          <div className="w-full flex items-center justify-between border-b-4 border-white/10 pb-6">
+            <h1 className="font-pixel text-3xl text-white uppercase flex items-center gap-3">
+              <Clock className="w-8 h-8 text-neo-lime" strokeWidth={3} />
+              TIMER_SYS
+            </h1>
+            
+            {/* Mode selector */}
+            <div className="relative">
+              <button
+                onClick={() => setShowModeMenu(!showModeMenu)}
+                className={`border-4 px-4 py-2 font-pixel text-sm uppercase flex items-center gap-2 neo-press transition-colors ${modeStyle}`}
+              >
+                {mode} <ChevronDown className="w-4 h-4" />
+              </button>
+              {showModeMenu && (
+                <div className="absolute top-full mt-2 right-0 w-48 border-4 border-white bg-neo-black shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] z-20">
+                  {MODES.map((m) => (
+                    <button key={m} type="button"
+                      onClick={() => { setMode(m); reset(MODE_DURATIONS[m] * 60); setShowModeMenu(false) }}
+                      className={`w-full text-left px-4 py-3 font-pixel text-sm uppercase transition-colors hover:bg-white hover:text-black ${mode === m ? 'bg-white/10 text-neo-lime' : 'text-white'}`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                  {mode === 'Custom' && (
+                    <div className="px-4 py-3 border-t-4 border-white bg-neo-purple">
+                      <input type="number" min={5} max={240}
+                         className="w-full bg-transparent text-sm font-pixel text-neo-lime focus:outline-none placeholder:text-neo-lime/50 uppercase"
+                        placeholder="MINUTES" value={customDuration}
+                        onChange={(e) => { const v = Number(e.target.value); setCustomDuration(v); reset(v * 60) }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="w-full flex flex-col items-center py-12 border-4 border-white/10 bg-white/5 relative overflow-hidden">
+            <div className="absolute -right-16 -top-16 font-pixel text-9xl text-white/5 opacity-50 select-none pointer-events-none">
+              {running ? 'ON' : 'OFF'}
+            </div>
+            
+            <p className="text-7xl md:text-9xl font-pixel tabular-nums tracking-tighter text-white drop-shadow-[4px_4px_0px_rgba(205,252,138,0.3)]">
+              {fmt(remaining)}
+            </p>
+            <p className="mt-4 font-pixel text-sm text-neo-lavender uppercase tracking-widest bg-neo-purple px-4 py-1 border-2 border-neo-lavender">
+              {running ? 'SESSION ACTIVE' : remaining === 0 ? 'COMPLETE' : 'STANDBY'}
+            </p>
+
+            <BlockyProgressBar pct={pct} colorClass={modeStyle} running={running} />
+          </div>
+
+          <div className="w-full flex items-center justify-center gap-6">
             <button
-              onClick={() => setShowModeMenu(!showModeMenu)}
-              className={`rounded-full px-5 py-1.5 text-sm font-medium bg-gradient-to-r ${grad} text-white flex items-center gap-1.5`}
+              onClick={running ? pause : start}
+              className={`flex items-center gap-3 border-4 px-8 py-4 font-pixel text-2xl uppercase neo-press transition-colors ${running ? 'bg-neo-lavender text-black border-black shadow-neo-purple' : 'bg-neo-lime text-black border-black shadow-neo-lavender'}`}
             >
-              {mode} <span className="text-white/70 text-xs">▾</span>
+              {running ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+              {running ? 'PAUSE' : remaining === 0 ? 'RESTART' : 'START'}
             </button>
-            {showModeMenu && (
-              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-44 rounded-xl border border-white/10 bg-[#1a1a2e] shadow-xl z-10 overflow-hidden">
-                {MODES.map((m) => (
-                  <button key={m} type="button"
-                    onClick={() => { setMode(m); reset(MODE_DURATIONS[m] * 60); setShowModeMenu(false) }}
-                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${mode === m ? 'bg-white/10 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}
-                  >
-                    {m}
-                  </button>
-                ))}
-                {mode === 'Custom' && (
-                  <div className="px-4 py-2 border-t border-white/10">
-                    <input type="number" min={5} max={240}
-                      className="w-full bg-transparent text-sm text-white focus:outline-none"
-                      placeholder="Minutes" value={customDuration}
-                      onChange={(e) => { const v = Number(e.target.value); setCustomDuration(v); reset(v * 60) }}
-                    />
-                  </div>
-                )}
+            <button
+              onClick={() => reset(duration)}
+              className="flex items-center justify-center w-16 h-16 border-4 border-white/20 text-white/50 hover:border-white hover:text-white bg-transparent neo-press transition-colors"
+              title="Reset"
+            >
+              <RotateCcw className="w-6 h-6" />
+            </button>
+          </div>
+        </section>
+
+        {/* ── Feed Section (Right) ───────────────────────────────── */}
+        <section className="lg:col-span-7 flex flex-col gap-12">
+          
+          {/* Urgent */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b-4 border-neo-lime pb-2">
+              <h2 className="font-pixel text-2xl text-neo-lime uppercase flex items-center gap-3">
+                <AlertTriangle className="w-6 h-6" strokeWidth={3} />
+                URGENT_QUEUE
+              </h2>
+              {urgentItems.length > 0 && (
+                <span className="border-2 border-neo-lime bg-neo-lime text-black font-pixel px-3 py-1 text-sm shadow-[2px_2px_0px_0px_#000]">
+                  {urgentItems.length}
+                </span>
+              )}
+            </div>
+            
+            {urgentItems.length === 0 ? (
+              <div className="border-4 border-dashed border-white/20 p-10 text-center flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-white/20 rounded-full flex items-center justify-center">
+                  <div className="w-2 h-2 bg-neo-lime rounded-full" />
+                </div>
+                <p className="font-pixel text-sm text-white/40 uppercase">NO URGENT ITEMS. FOCUS MAINTAINED.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {urgentItems.map((item) => <UrgentCard key={item.id} item={item} />)}
               </div>
             )}
           </div>
 
-          {/* Ring */}
-          <div className="relative w-64 h-64 flex items-center justify-center">
-            <Ring pct={pct} gradient={grad} />
-            <div className="relative text-center">
-              <p className="text-5xl font-light tabular-nums tracking-tight text-white">{fmt(remaining)}</p>
-              <p className="mt-1 text-xs text-white/30 uppercase tracking-wider">{running ? 'Session running' : remaining === 0 ? 'Complete' : 'Paused'}</p>
+          {/* People */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b-4 border-neo-lavender pb-2">
+              <h2 className="font-pixel text-2xl text-neo-lavender uppercase flex items-center gap-3">
+                <Users className="w-6 h-6" strokeWidth={3} />
+                CONTACT_INTEL
+              </h2>
+              {peopleItems.length > 0 && (
+                <span className="border-2 border-neo-lavender bg-neo-lavender text-black font-pixel px-3 py-1 text-sm shadow-[2px_2px_0px_0px_#000]">
+                  {peopleItems.length}
+                </span>
+              )}
             </div>
+            <PeopleSection items={peopleItems} />
           </div>
 
-          {/* Controls */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={running ? pause : start}
-              className={`rounded-full px-8 py-3 text-sm font-semibold transition-all bg-gradient-to-r ${grad} text-white shadow-lg hover:opacity-90`}
-            >
-              {running ? 'Pause' : remaining === 0 ? 'Restart' : 'Start'}
-            </button>
-            <button
-              onClick={() => reset(duration)}
-              className="rounded-full border border-white/10 px-5 py-3 text-sm text-white/40 hover:text-white transition-colors"
-            >
-              Reset
-            </button>
-          </div>
         </section>
-
-        {/* Divider */}
-        <div className="border-t border-white/5" />
-
-        {/* ── Urgent ───────────────────────────────── */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-white">Urgent</h2>
-              <p className="text-xs text-white/40 mt-0.5">Time-sensitive items that need action</p>
-            </div>
-            {urgentItems.length > 0 && (
-              <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-medium text-amber-400">
-                {urgentItems.length}
-              </span>
-            )}
-          </div>
-          {urgentItems.length === 0 ? (
-            <p className="text-sm text-white/30 text-center py-6 rounded-xl border border-dashed border-white/10">
-              Nothing urgent right now. Focus on your session.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {urgentItems.map((item) => <UrgentCard key={item.id} item={item} />)}
-            </div>
-          )}
-        </section>
-
-        {/* ── People ───────────────────────────────── */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-white">People</h2>
-              <p className="text-xs text-white/40 mt-0.5">Contact activity that matters</p>
-            </div>
-            {peopleItems.length > 0 && (
-              <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/60">
-                {peopleItems.length}
-              </span>
-            )}
-          </div>
-          <PeopleSection items={peopleItems} />
-        </section>
-
       </div>
     </div>
   )

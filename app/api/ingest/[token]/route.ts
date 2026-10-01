@@ -26,7 +26,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   }
   const { data: conn } = await db
     .from('source_connections')
-    .select('id, user_id, source_type, enabled, payload_mapping, status')
+    .select('id, user_id, source_type, enabled, payload_mapping, status, events_received')
     .eq('token_hash', hashToken(token))
     .maybeSingle()
   if (!conn || !conn.enabled) return fail('invalid_token', 'Invalid token', 401)
@@ -87,7 +87,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
       .update({
         status: 'live',
         last_received_at: receivedAt.toISOString(),
-        events_received: (await db.from('ingestion_events').select('id', { count: 'exact', head: true }).eq('source_connection_id', conn.id).eq('status', 'accepted')).count! + 1,
+        events_received: (conn.events_received ?? 0) + 1,
         last_error: null,
         last_error_category: null,
         updated_at: receivedAt.toISOString(),

@@ -14,6 +14,7 @@ type Conn = {
   last_received_at: string | null
   events_received: number
   last_error: string | null
+  payload_mapping: Record<string, string>
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
@@ -45,10 +46,30 @@ export function SourcesPanel() {
     mutate()
   }
 
+  async function rotate(c: Conn) {
+    setError(null)
+    const res = await fetch(`/api/connections/${c.id}`, { method: 'POST' })
+    const j = await res.json()
+    if (!res.ok) return setError('Could not rotate token.')
+    setReveal({ url: `${window.location.origin}/api/ingest/${j.token}` })
+    mutate()
+  }
+
   async function remove(c: Conn) {
     await fetch(`/api/connections/${c.id}`, { method: 'DELETE' })
     mutate()
   }
+
+  async function updateMapping(c: Conn, mapping: Record<string, string>) {
+    await fetch(`/api/connections/${c.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ payloadMapping: mapping }),
+    })
+    mutate()
+  }
+
+  const [editingMapping, setEditingMapping] = useState<string | null>(null)
 
   return (
     <div className="space-y-6">
@@ -84,6 +105,12 @@ export function SourcesPanel() {
               {c.last_error && <p className="text-xs text-destructive">Last error: {c.last_error}</p>}
             </div>
             <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEditingMapping(editingMapping === c.id ? null : c.id)}>
+                {editingMapping === c.id ? 'Close mapping' : 'Edit mapping'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => rotate(c)}>
+                Rotate token
+              </Button>
               <Button variant="outline" size="sm" onClick={() => toggle(c)}>
                 {c.enabled ? 'Disable' : 'Enable'}
               </Button>
@@ -91,10 +118,49 @@ export function SourcesPanel() {
                 Delete
               </Button>
             </div>
+            {editingMapping === c.id && (
+              <MappingEditor 
+                initialMapping={c.payload_mapping || {}} 
+                onSave={(m) => { updateMapping(c, m); setEditingMapping(null); }}
+              />
+            )}
           </li>
         ))}
         {data && data.connections.length === 0 && <li className="text-sm text-muted-foreground">No sources connected yet.</li>}
       </ul>
+    </div>
+  )
+}
+
+function MappingEditor({ initialMapping, onSave }: { initialMapping: Record<string, string>; onSave: (m: Record<string, string>) => void }) {
+  const [text, setText] = useState(() => JSON.stringify(initialMapping, null, 2))
+  const [err, setErr] = useState<string | null>(null)
+
+  function handleSave() {
+    try {
+      const parsed = JSON.parse(text)
+      if (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null) {
+        throw new Error('Must be a JSON object')
+      }
+      onSave(parsed)
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+
+  return (
+    <div className="mt-4 w-full space-y-2 rounded border bg-muted/50 p-4">
+      <p className="text-xs font-medium">Payload Mapping (JSON)</p>
+      <p className="text-xs text-muted-foreground">
+        Map internal fields to your webhook's JSON paths. Valid fields: <code className="text-[10px]">externalId, source, appName, packageName, sender, title, body, notificationType, timestamp, url</code>
+      </p>
+      <textarea
+        className="w-full h-32 rounded border bg-background p-2 text-xs font-mono"
+        value={text}
+        onChange={(e) => { setText(e.target.value); setErr(null); }}
+      />
+      {err && <p className="text-xs text-destructive">{err}</p>}
+      <Button size="sm" onClick={handleSave}>Save mapping</Button>
     </div>
   )
 }
