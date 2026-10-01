@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import useSWR from 'swr'
-import { Zap, RefreshCcw, ExternalLink, ShieldAlert, GitMerge } from 'lucide-react'
+import { Zap, RefreshCcw, ExternalLink, ShieldAlert, GitMerge, ArrowRight, Filter } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 /* ─── Types ──────────────────────────────────────────────────── */
@@ -29,10 +30,19 @@ type Cluster = {
   has_conflict: boolean
   is_breaking: boolean
   trail: { source: string; url?: string | null; timestamp?: string | null }[]
-  summary: { status: string; summary_json: string[] } | null
+  summary: { status: string; summary_json: string[]; model?: string } | null
 }
 
 type Resp = { items: HighlightItem[]; clusters: Record<string, Cluster> }
+
+/* ─── Categories ──────────────────────────────────────────────── */
+const CATEGORIES: { id: string; label: string }[] = [
+  { id: 'all', label: 'ALL' },
+  { id: 'summaries', label: 'NEWS' },
+  { id: 'urgent', label: 'URGENT' },
+  { id: 'people', label: 'PEOPLE' },
+  { id: 'discovery', label: 'DISCOVERY' },
+]
 
 const fetcher = (url: string) =>
   fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error('fetch_failed'))))
@@ -63,7 +73,7 @@ function SourceBadge({ source, isMock }: { source: string; isMock: boolean }) {
 function HighlightCard({ item }: { item: HighlightItem }) {
   const isMock = item.source_type.endsWith('_mock')
   return (
-    <motion.article 
+    <motion.article
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="break-inside-avoid mb-6 rounded-none border-4 border-white/20 bg-neo-black p-5 hover:border-neo-lavender transition-colors shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] hover:shadow-neo-lavender"
@@ -75,7 +85,7 @@ function HighlightCard({ item }: { item: HighlightItem }) {
         </div>
         <div className="space-y-2">
           {item.title && <h3 className="font-sans text-xl font-bold text-white uppercase leading-snug">{item.title}</h3>}
-          {item.text && <p className="font-sans text-sm leading-relaxed text-white/75 line-clamp-4">{item.text}</p>}
+          {item.text && !item.title && <p className="font-sans text-sm text-white/80">{item.text}</p>}
         </div>
         {item.url && (
           <a
@@ -99,11 +109,11 @@ function ClusterCard({ cluster, items }: { cluster: Cluster; items: HighlightIte
   const sources = cluster.trail ?? []
 
   return (
-    <motion.article 
+    <motion.article
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="break-inside-avoid mb-6 flex flex-col border-4 bg-neo-black transition-colors"
-      style={{ 
+      style={{
         borderColor: cluster.is_breaking ? 'var(--color-neo-lime)' : 'rgba(255,255,255,0.2)',
         boxShadow: cluster.is_breaking ? '6px 6px 0px 0px var(--color-neo-lime)' : '6px 6px 0px 0px rgba(255,255,255,0.1)'
       }}
@@ -129,13 +139,13 @@ function ClusterCard({ cluster, items }: { cluster: Cluster; items: HighlightIte
       </div>
 
       {/* Summary bullets */}
-      <div className="p-5">
+      <div className="p-5 flex-1">
         {hasSummary ? (
           <ul className="space-y-3">
             {cluster.summary!.summary_json.map((bullet, i) => (
               <li key={i} className="flex gap-3 font-sans text-sm text-white/90 leading-relaxed">
                 <span className="mt-1.5 w-2 h-2 border border-neo-lime bg-neo-lime flex-shrink-0" />
-                {bullet}
+                {typeof bullet === 'string' ? bullet : (bullet as {text?: string}).text ?? ''}
               </li>
             ))}
           </ul>
@@ -168,67 +178,76 @@ function ClusterCard({ cluster, items }: { cluster: Cluster; items: HighlightIte
           </div>
         </div>
       )}
+
+      {/* Deep dive link */}
+      <div className="border-t-4 border-white/10 p-4">
+        <Link
+          href={`/cluster/${cluster.id}`}
+          className="flex items-center justify-between font-pixel text-xs text-neo-lime uppercase hover:text-white transition-colors group"
+        >
+          <span>FULL STORY + TIMELINE</span>
+          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+        </Link>
+      </div>
     </motion.article>
   )
 }
 
 /* ─── Main component ──────────────────────────────────────────── */
 export function Highlights() {
-  const {
-    data: summariesData, isLoading: loadingSummaries, mutate: refreshSummaries,
-  } = useSWR<Resp>('/api/items?category=summaries&limit=50', fetcher, { refreshInterval: 60000 })
+  const [activeCategory, setActiveCategory] = useState('all')
+
+  const apiUrl = activeCategory === 'all'
+    ? '/api/items?limit=50'
+    : `/api/items?category=${activeCategory}&limit=50`
 
   const {
-    data: forYouData, isLoading: loadingForYou, mutate: refreshForYou,
-  } = useSWR<Resp>('/api/for-you?limit=50', fetcher, { refreshInterval: 60000 })
+    data: itemsData, isLoading, mutate: refreshItems,
+  } = useSWR<Resp>(apiUrl, fetcher, { refreshInterval: 60000 })
+
+  const {
+    data: forYouData, mutate: refreshForYou,
+  } = useSWR<Resp>('/api/for-you?limit=30', fetcher, { refreshInterval: 60000 })
 
   const [refreshing, setRefreshing] = useState(false)
 
   async function refreshNews() {
     setRefreshing(true)
     await fetch('/api/rss/refresh', { method: 'POST' }).catch(() => null)
-    await Promise.all([refreshSummaries(), refreshForYou()])
+    await Promise.all([refreshItems(), refreshForYou()])
     setRefreshing(false)
   }
 
-  const summaryItems = summariesData?.items ?? []
-  const clusters = summariesData?.clusters ?? {}
-  const forYouItems = forYouData?.items ?? []
+  // Merge & deduplicate
+  const allItems = [...(itemsData?.items ?? []), ...(activeCategory === 'all' ? (forYouData?.items ?? []) : [])]
+  const allClusters = { ...(itemsData?.clusters ?? {}), ...(forYouData?.clusters ?? {}) }
 
-  const isLoading = loadingSummaries || loadingForYou
-
-  // Keep Highlights as one personalized reading surface, while collapsing
-  // repeated reports into one story and avoiding duplicate item cards.
-  const allItems = [...summaryItems, ...forYouItems]
-  const allClusters = { ...clusters, ...(forYouData?.clusters ?? {}) }
   const seenItemIds = new Set<string>()
-  const combinedStories = allItems
+  const seenClusterIds = new Set<string>()
+  const highlights = allItems
     .sort((a, b) => (b.timestamp ? Date.parse(b.timestamp) : 0) - (a.timestamp ? Date.parse(a.timestamp) : 0))
-    .map((item) => {
-      if (seenItemIds.has(item.id)) return null
+    .flatMap<{ type: 'cluster'; cluster: Cluster; items: HighlightItem[] } | { type: 'item'; item: HighlightItem }>((item) => {
+      if (seenItemIds.has(item.id)) return []
       seenItemIds.add(item.id)
       const cluster = item.cluster_id ? allClusters[item.cluster_id] : null
-      if (!cluster) return { type: 'item' as const, item }
-      return { type: 'cluster' as const, cluster, items: allItems.filter((candidate) => candidate.cluster_id === cluster.id) }
+      if (cluster) {
+        if (seenClusterIds.has(cluster.id)) return []
+        seenClusterIds.add(cluster.id)
+        return [{ type: 'cluster' as const, cluster, items: allItems.filter((c) => c.cluster_id === cluster.id) }]
+      }
+      return [{ type: 'item' as const, item }]
     })
-  const seenClusterIds = new Set<string>()
-  const highlights = combinedStories.flatMap((entry) => {
-    if (!entry) return []
-    if (entry.type === 'item') return [entry]
-    if (seenClusterIds.has(entry.cluster.id)) return []
-    seenClusterIds.add(entry.cluster.id)
-    return [entry]
-  }).slice(0, 24)
+    .slice(0, 30)
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-neo-black text-white font-sans">
-      <div className="max-w-7xl mx-auto px-6 py-12 space-y-12">
+      <div className="max-w-7xl mx-auto px-6 py-12 space-y-10">
 
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b-4 border-white/10 pb-6">
           <div>
             <h1 className="font-pixel text-4xl text-white uppercase">SYNTHESIZED INTEL</h1>
-            <p className="mt-3 font-sans text-lg text-white/50">Personalized current information, filtered and compressed.</p>
+            <p className="mt-3 font-sans text-lg text-white/50">Personalized information, filtered and compressed.</p>
           </div>
           <button
             onClick={refreshNews}
@@ -240,21 +259,35 @@ export function Highlights() {
           </button>
         </div>
 
+        {/* Category filter tabs */}
+        <div className="flex items-center gap-1 flex-wrap">
+          <Filter className="w-4 h-4 text-white/40 mr-2" />
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`font-pixel text-sm px-4 py-2 uppercase border-2 transition-colors neo-press ${
+                activeCategory === cat.id
+                  ? 'bg-neo-lime text-black border-black shadow-[3px_3px_0px_0px_#000]'
+                  : 'bg-transparent text-white/60 border-white/20 hover:border-white/50 hover:text-white'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
         {isLoading && (
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+          <div className="columns-1 md:columns-2 lg:columns-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-48 border-4 border-white/10 bg-white/5 animate-pulse break-inside-avoid" />
+              <div key={i} className="h-48 border-4 border-white/10 bg-white/5 animate-pulse break-inside-avoid mb-6" />
             ))}
           </div>
         )}
 
-        {/* Stories & summaries (Masonry Layout) */}
-        {highlights.length > 0 && (
-          <section className="space-y-6">
-            <div className="flex items-center gap-4">
-              <span className="font-pixel text-xl text-neo-lime uppercase bg-neo-lime/10 px-4 py-2 border-2 border-neo-lime">Current highlights</span>
-              <div className="h-1 flex-1 bg-white/10" />
-            </div>
+        {/* Masonry grid */}
+        {!isLoading && highlights.length > 0 && (
+          <section>
             <div className="columns-1 md:columns-2 xl:columns-3 gap-6">
               {highlights.map((entry) =>
                 entry.type === 'cluster'
