@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 const LINKS = [
   { href: '/dashboard', label: 'Attention', icon: '🎯' },
   { href: '/highlights', label: 'Highlights', icon: '✦' },
+  { href: '/workspaces', label: 'Workspaces', icon: '❖' },
   { href: '/settings', label: 'Settings', icon: '⚙' },
 ]
 
