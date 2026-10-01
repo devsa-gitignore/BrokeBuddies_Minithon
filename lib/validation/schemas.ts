@@ -51,6 +51,16 @@ export const connectionPatchSchema = z.object({
   config: z.record(z.string(), z.unknown()).optional(),
 })
 
+export const jobSearchSchema = z.object({
+  role: z.string().trim().max(100).optional(),
+  level: z.enum(['intern', 'entry', 'mid', 'senior', 'lead', 'any']).optional(),
+  remote: z.enum(['remote', 'hybrid', 'onsite', 'any']).optional(),
+  location: z.string().trim().max(100).optional(),
+  industries: z.array(z.string().trim().max(60)).max(10).optional(),
+  skills: z.array(z.string().trim().max(60)).max(20).optional(),
+  urgentFor: z.array(z.enum(['openings', 'deadlines', 'interviews', 'company_news', 'salary'])).optional(),
+})
+
 export const settingsPatchSchema = z.object({
   timezone: z.string().refine(isValidTimeZone, 'Invalid IANA timezone').optional(),
   quiet_start: hhmm.optional(),
@@ -61,6 +71,11 @@ export const settingsPatchSchema = z.object({
   interruption_budget: z.number().int().min(0).max(50).optional(),
   current_mode: z.enum(['normal', 'focus', 'quiet']).optional(),
   focus_until: z.iso.datetime({ offset: true }).nullable().optional(),
+  session_duration_minutes: z.number().int().min(5).max(240).optional(),
+  attention_filter: z.enum(['all', 'important', 'urgent_only']).optional(),
+  breaking_news_topics: z.array(z.string().trim().max(80)).max(20).optional(),
+  urgent_categories: z.array(z.string().trim().max(80)).max(20).optional(),
+  job_search: jobSearchSchema.nullable().optional(),
   topics: z.array(z.object({ topic: z.string().trim().min(1).max(80), weight: z.number().int().min(1).max(5).default(1) })).max(50).optional(),
   keywords: z.array(z.object({ keyword: z.string().trim().min(1).max(80), weight: z.number().int().min(1).max(5).default(1) })).max(100).optional(),
   ignoreRules: z
@@ -95,6 +110,7 @@ export const itemsQuerySchema = z.object({
 
 export const onboardingSchema = z.object({
   displayName: z.string().trim().max(100).optional(),
+  purpose: z.array(z.string().max(60)).max(10).default([]),
   sourcesUsed: z.array(z.string().max(40)).max(20),
   settings: settingsPatchSchema,
   calibration: z.array(z.object({ key: z.string().max(60), important: z.boolean() })).max(20).default([]),

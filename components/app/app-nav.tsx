@@ -2,14 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
-import { cn } from '@/lib/utils'
 
 const LINKS = [
-  { href: '/dashboard', label: 'Feeds' },
-  { href: '/sources', label: 'Sources' },
-  { href: '/settings', label: 'Settings' },
+  { href: '/dashboard', label: 'Attention', icon: '🎯' },
+  { href: '/highlights', label: 'Highlights', icon: '✦' },
+  { href: '/settings', label: 'Settings', icon: '⚙' },
 ]
 
 export function AppNav() {
@@ -23,27 +21,40 @@ export function AppNav() {
   }
 
   return (
-    <header className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
+    <header className="sticky top-0 z-20 border-b border-white/[0.06] bg-[#0d0d1a]/90 backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
+        {/* Brand */}
+        <span className="text-sm font-semibold text-white/80 tracking-tight">Info</span>
+
+        {/* Nav */}
         <nav aria-label="Primary" className="flex items-center gap-1">
-          <span className="mr-3 text-sm font-semibold">Attention</span>
-          {LINKS.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              aria-current={pathname === l.href ? 'page' : undefined}
-              className={cn(
-                'rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground',
-                pathname === l.href && 'bg-muted text-foreground',
-              )}
-            >
-              {l.label}
-            </Link>
-          ))}
+          {LINKS.map((l) => {
+            const active = pathname === l.href || (l.href !== '/dashboard' && pathname.startsWith(l.href))
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                aria-current={active ? 'page' : undefined}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                  active
+                    ? 'bg-white/10 text-white'
+                    : 'text-white/40 hover:text-white/70'
+                }`}
+              >
+                <span className="text-xs">{l.icon}</span>
+                {l.label}
+              </Link>
+            )
+          })}
         </nav>
-        <Button variant="ghost" size="sm" onClick={signOut}>
+
+        {/* Sign out */}
+        <button
+          onClick={signOut}
+          className="rounded-lg px-3 py-1.5 text-sm text-white/30 hover:text-white/60 transition-colors"
+        >
           Sign out
-        </Button>
+        </button>
       </div>
     </header>
   )

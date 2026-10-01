@@ -1,5 +1,5 @@
-import { Dashboard } from '@/components/feed/dashboard'
+import { AttentionMode } from '@/components/app/attention-mode'
 
 export default function DashboardPage() {
-  return <Dashboard />
+  return <AttentionMode />
 }

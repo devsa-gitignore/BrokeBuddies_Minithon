@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { CLUSTER, CLUSTERABLE_SOURCE_TYPES, PROCESSING_VERSION, REPEAT } from '@/lib/config'
 import { computeClusterStats, matchCluster, mergeSignature, signatureOf, tokenize, type ClusterMember } from '@/lib/clustering'
 import { loadPrefs } from '@/lib/db/prefs'
+import { stripPrivateKeys } from '@/lib/normalizer'
 import { evaluateItem, type EvalCluster, type EvalResult } from '@/lib/evaluation'
 import { localDayBounds } from '@/lib/timeZone'
 import { updateClusterSummary } from '@/lib/summarizer'
@@ -263,15 +264,15 @@ export async function processItem(
       sender: norm.sender,
       sender_identifier: norm.senderIdentifier,
       timestamp: norm.timestamp?.toISOString() ?? null,
-      title: norm.title,
-      text: norm.text,
+      title: norm.sourceType === 'phone_notification' ? null : norm.title,
+      text: norm.sourceType === 'phone_notification' ? null : norm.text,
       url: norm.url,
       is_mock: opts.isMock ?? norm.sourceType.endsWith('_mock'),
       cluster_id: cluster?.id ?? null,
       content_hash: norm.contentHash,
       dedupe_key: norm.dedupeKey,
       engagement: norm.engagement,
-      metadata: norm.metadata,
+      metadata: norm.sourceType === 'phone_notification' ? stripPrivateKeys(norm.metadata ?? {}) : norm.metadata,
       ...evalColumns(ev),
     })
     .select('id, category')

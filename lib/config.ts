@@ -68,7 +68,6 @@ export const DISCOVERY_SOURCE_TYPES: SourceType[] = [
 ]
 export const TITLE_ONLY_TIME_SOURCES: SourceType[] = ['rss', 'article_mock']
 export const NO_TIME_EXTRACTION_SOURCES: SourceType[] = [
-  'phone_notification',
   ...DISCOVERY_SOURCE_TYPES,
 ]
 
